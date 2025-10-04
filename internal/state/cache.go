@@ -3,7 +3,7 @@ package state
 import (
 	"sync"
 
-	"gitlab.com/your-org/jira-mcp/internal/jira"
+	"gitlab.com/your-org/atlassian-mcp/internal/jira"
 )
 
 // Cache holds lightweight shared state for the MCP session.

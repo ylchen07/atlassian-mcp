@@ -1,4 +1,4 @@
-module gitlab.com/your-org/jira-mcp
+module gitlab.com/your-org/atlassian-mcp
 
 go 1.25.1
 

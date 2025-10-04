@@ -10,26 +10,34 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/your-org/jira-mcp/internal/atlassian"
-	"gitlab.com/your-org/jira-mcp/internal/config"
-	"gitlab.com/your-org/jira-mcp/internal/confluence"
-	"gitlab.com/your-org/jira-mcp/internal/jira"
+	"gitlab.com/your-org/atlassian-mcp/internal/atlassian"
+	"gitlab.com/your-org/atlassian-mcp/internal/config"
+	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
+	"gitlab.com/your-org/atlassian-mcp/internal/jira"
 )
 
 func TestJiraListProjectsIntegration(t *testing.T) {
 	requireIntegration(t)
 
-	site := ensureHTTPS(os.Getenv("JIRA_MCP_ATLASSIAN_SITE"))
-	if site == "" {
-		t.Skip("JIRA_MCP_ATLASSIAN_SITE not set")
+	jiraSite := ensureHTTPS(resolveEnv(
+		"ATLASSIAN_JIRA_SITE",
+		"ATLASSIAN_SITE",
+	))
+	if jiraSite == "" {
+		t.Skip("ATLASSIAN_JIRA_SITE not set")
 	}
 
-	creds := loadCredentials(os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_EMAIL"), os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_API_TOKEN"), os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_OAUTH"))
+	creds := loadCredentials(os.Getenv("ATLASSIAN_JIRA_EMAIL"), os.Getenv("ATLASSIAN_JIRA_API_TOKEN"), os.Getenv("ATLASSIAN_JIRA_OAUTH_TOKEN"))
 	if !credsValid(creds) {
 		t.Skip("Jira credentials not provided")
 	}
 
-	client, err := atlassian.NewClient(fmt.Sprintf("%s/rest/api/3", site), creds, nil)
+	apiBase := ensureHTTPS(os.Getenv("ATLASSIAN_JIRA_API_BASE"))
+	if apiBase == "" {
+		apiBase = fmt.Sprintf("%s/rest/api/3", jiraSite)
+	}
+
+	client, err := atlassian.NewClient(apiBase, creds, nil)
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -40,27 +48,35 @@ func TestJiraListProjectsIntegration(t *testing.T) {
 		t.Fatalf("ListProjects: %v", err)
 	}
 	if len(projects) == 0 {
-		t.Logf("no projects returned from Jira site %s", site)
+		t.Logf("no projects returned from Jira site %s", jiraSite)
 	}
 }
 
 func TestConfluenceListSpacesIntegration(t *testing.T) {
 	requireIntegration(t)
 
-	site := ensureHTTPS(os.Getenv("JIRA_MCP_ATLASSIAN_SITE"))
-	if site == "" {
-		t.Skip("JIRA_MCP_ATLASSIAN_SITE not set")
+	confluenceSite := ensureHTTPS(resolveEnv(
+		"ATLASSIAN_CONFLUENCE_SITE",
+		"ATLASSIAN_SITE",
+	))
+	if confluenceSite == "" {
+		t.Skip("ATLASSIAN_CONFLUENCE_SITE not set")
 	}
 
-	creds := loadCredentials(os.Getenv("JIRA_MCP_ATLASSIAN_CONFLUENCE_EMAIL"), os.Getenv("JIRA_MCP_ATLASSIAN_CONFLUENCE_API_TOKEN"), os.Getenv("JIRA_MCP_ATLASSIAN_CONFLUENCE_OAUTH"))
+	creds := loadCredentials(os.Getenv("ATLASSIAN_CONFLUENCE_EMAIL"), os.Getenv("ATLASSIAN_CONFLUENCE_API_TOKEN"), os.Getenv("ATLASSIAN_CONFLUENCE_OAUTH_TOKEN"))
 	if !credsValid(creds) {
-		creds = loadCredentials(os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_EMAIL"), os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_API_TOKEN"), os.Getenv("JIRA_MCP_ATLASSIAN_JIRA_OAUTH"))
+		creds = loadCredentials(os.Getenv("ATLASSIAN_JIRA_EMAIL"), os.Getenv("ATLASSIAN_JIRA_API_TOKEN"), os.Getenv("ATLASSIAN_JIRA_OAUTH_TOKEN"))
 	}
 	if !credsValid(creds) {
 		t.Skip("Confluence credentials not provided")
 	}
 
-	client, err := atlassian.NewClient(fmt.Sprintf("%s/wiki/rest/api", site), creds, nil)
+	apiBase := ensureHTTPS(os.Getenv("ATLASSIAN_CONFLUENCE_API_BASE"))
+	if apiBase == "" {
+		apiBase = fmt.Sprintf("%s/wiki/rest/api", confluenceSite)
+	}
+
+	client, err := atlassian.NewClient(apiBase, creds, nil)
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -71,14 +87,14 @@ func TestConfluenceListSpacesIntegration(t *testing.T) {
 		t.Fatalf("ListSpaces: %v", err)
 	}
 	if len(spaces) == 0 {
-		t.Logf("no spaces returned from Confluence site %s", site)
+		t.Logf("no spaces returned from Confluence site %s", confluenceSite)
 	}
 }
 
 func requireIntegration(t *testing.T) {
 	t.Helper()
-	if os.Getenv("JIRA_MCP_INTEGRATION") == "" {
-		t.Skip("JIRA_MCP_INTEGRATION not set; skipping integration tests")
+	if os.Getenv("MCP_INTEGRATION") == "" {
+		t.Skip("MCP_INTEGRATION not set; skipping integration tests")
 	}
 }
 
@@ -91,6 +107,15 @@ func ensureHTTPS(site string) string {
 		return strings.TrimRight(trimmed, "/")
 	}
 	return "https://" + strings.TrimRight(trimmed, "/")
+}
+
+func resolveEnv(keys ...string) string {
+	for _, key := range keys {
+		if val := os.Getenv(key); strings.TrimSpace(val) != "" {
+			return val
+		}
+	}
+	return ""
 }
 
 func loadCredentials(email, token, oauth string) config.ServiceCredentials {

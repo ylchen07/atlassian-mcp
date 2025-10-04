@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	"gitlab.com/your-org/jira-mcp/internal/jira"
+	"gitlab.com/your-org/atlassian-mcp/internal/jira"
 )
 
 func TestCacheProjects(t *testing.T) {
