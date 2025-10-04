@@ -138,3 +138,40 @@ func TestServiceCreatePage(t *testing.T) {
 		t.Fatalf("unexpected response %#v", res)
 	}
 }
+
+func TestServiceUpdatePage(t *testing.T) {
+	t.Parallel()
+
+	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPut {
+			t.Fatalf("expected PUT, got %s", r.Method)
+		}
+		if !strings.HasSuffix(r.URL.Path, "/content/1") {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		version, _ := body["version"].(map[string]any)
+		if version["number"].(float64) != 2 {
+			t.Fatalf("expected version 2, got %v", version["number"])
+		}
+		return jsonResponse(t, http.StatusOK, map[string]any{
+			"id":    "1",
+			"title": body["title"],
+			"version": map[string]any{
+				"number": 2,
+			},
+		}), nil
+	})
+
+	svc := NewService(client)
+	res, err := svc.UpdatePage(context.Background(), "1", PageInput{Title: "Updated", Body: "body", Version: 2})
+	if err != nil {
+		t.Fatalf("UpdatePage error: %v", err)
+	}
+	if res.Version.Number != 2 || res.Title != "Updated" {
+		t.Fatalf("unexpected update response %#v", res)
+	}
+}

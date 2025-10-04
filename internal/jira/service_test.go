@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"strings"
 	"testing"
 
 	"gitlab.com/your-org/jira-mcp/internal/atlassian"
@@ -115,5 +117,117 @@ func TestServiceSearchIssues(t *testing.T) {
 	}
 	if res.Issues[0].Key != "PRJ-1" {
 		t.Fatalf("expected issue key PRJ-1, got %s", res.Issues[0].Key)
+	}
+}
+
+func TestServiceListTransitions(t *testing.T) {
+	t.Parallel()
+
+	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/issue/PRJ-1/transitions" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("expand") != "transitions.fields" {
+			t.Fatalf("missing expand param")
+		}
+		return jsonResponse(t, http.StatusOK, map[string]any{
+			"transitions": []map[string]any{{
+				"id":   "1",
+				"name": "Done",
+				"to": map[string]any{
+					"id":   "100",
+					"name": "Done",
+				},
+			}},
+		}), nil
+	})
+
+	svc := NewService(client)
+	transitions, err := svc.ListTransitions(context.Background(), "PRJ-1")
+	if err != nil {
+		t.Fatalf("ListTransitions error: %v", err)
+	}
+	if len(transitions) != 1 || transitions[0].ID != "1" {
+		t.Fatalf("unexpected transitions %#v", transitions)
+	}
+}
+
+func TestServiceTransitionIssue(t *testing.T) {
+	t.Parallel()
+
+	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/issue/PRJ-1/transitions" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		transition := body["transition"].(map[string]any)
+		if transition["id"] != "2" {
+			t.Fatalf("unexpected transition %#v", transition)
+		}
+		return jsonResponse(t, http.StatusNoContent, nil), nil
+	})
+
+	svc := NewService(client)
+	if err := svc.TransitionIssue(context.Background(), "PRJ-1", "2", nil); err != nil {
+		t.Fatalf("TransitionIssue error: %v", err)
+	}
+}
+
+func TestServiceAddAttachment(t *testing.T) {
+	t.Parallel()
+
+	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/issue/PRJ-1/attachments" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		if r.Header.Get("X-Atlassian-Token") != "nocheck" {
+			t.Fatalf("missing nocheck header")
+		}
+		ct := r.Header.Get("Content-Type")
+		if !strings.HasPrefix(ct, "multipart/form-data") {
+			t.Fatalf("unexpected content type %s", ct)
+		}
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		boundaryIdx := strings.Index(ct, "boundary=")
+		if boundaryIdx == -1 {
+			t.Fatalf("boundary not found")
+		}
+		boundary := ct[boundaryIdx+9:]
+		mr := multipart.NewReader(bytes.NewReader(data), boundary)
+		part, err := mr.NextPart()
+		if err != nil {
+			t.Fatalf("next part: %v", err)
+		}
+		if part.FileName() != "file.txt" {
+			t.Fatalf("unexpected filename %s", part.FileName())
+		}
+		content, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatalf("read part: %v", err)
+		}
+		if string(content) != "hello" {
+			t.Fatalf("unexpected data %s", string(content))
+		}
+		return jsonResponse(t, http.StatusCreated, map[string]any{"id": "att-1"}), nil
+	})
+
+	svc := NewService(client)
+	if err := svc.AddAttachment(context.Background(), "PRJ-1", "file.txt", []byte("hello")); err != nil {
+		t.Fatalf("AddAttachment error: %v", err)
 	}
 }

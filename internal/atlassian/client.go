@@ -24,6 +24,12 @@ type Client struct {
 	logger     *slog.Logger
 }
 
+// RawBody allows callers to provide a pre-encoded body when constructing requests.
+type RawBody struct {
+	Reader      io.Reader
+	ContentType string
+}
+
 // NewClient constructs a Client for the specified base URL and credentials.
 func NewClient(base string, creds config.ServiceCredentials, logger *slog.Logger) (*Client, error) {
 	if base == "" {
@@ -69,21 +75,30 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, query map[
 		u.RawQuery = q.Encode()
 	}
 
-	var buf io.ReadWriter
-	if body != nil {
-		buf = new(bytes.Buffer)
+	var bodyReader io.Reader
+	contentType := ""
+	switch b := body.(type) {
+	case nil:
+		// no body
+	case RawBody:
+		bodyReader = b.Reader
+		contentType = b.ContentType
+	default:
+		buf := new(bytes.Buffer)
 		if err := json.NewEncoder(buf).Encode(body); err != nil {
 			return nil, fmt.Errorf("atlassian: encode body: %w", err)
 		}
+		bodyReader = buf
+		contentType = "application/json"
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
 	if err != nil {
 		return nil, err
 	}
 
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
 
 	return req, nil
@@ -113,7 +128,7 @@ func (c *Client) Do(req *http.Request, out any) error {
 	return nil
 }
 
-// SetTransport overrides the HTTP transport, primarily for testing.
+// SetTransport overrides the underlying HTTP transport. Useful for testing.
 func (c *Client) SetTransport(rt http.RoundTripper) {
 	if rt == nil {
 		return

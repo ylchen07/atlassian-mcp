@@ -23,9 +23,20 @@ Configuration is resolved from `config.yaml` and environment variables. See `con
 
 ## Development
 
-- `make lint` – run linters via `golangci-lint`.
-- `make test` – execute unit tests.
+- `make lint` – run `golangci-lint` (ensure version 2.x is installed locally).
+- `make test` – execute unit tests with a local build cache.
 - `make run` – launch the stdio MCP server.
+
+You can also run the linters directly:
+
+```bash
+CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/golangci golangci-lint run ./...
+```
+
+### Configuration tips
+
+- Set `JIRA_MCP_ATLASSIAN_SITE`, `JIRA_MCP_ATLASSIAN_JIRA_EMAIL`, and related env vars to avoid committing secrets.
+- Use `config.yaml` only for local development; CI loads credentials from environment variables.
 
 ## CI/CD
 

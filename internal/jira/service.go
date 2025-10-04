@@ -1,8 +1,11 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"mime/multipart"
+	"net/http"
 	"net/url"
 
 	"gitlab.com/your-org/jira-mcp/internal/atlassian"
@@ -30,6 +33,16 @@ type Issue struct {
 	ID     string      `json:"id"`
 	Key    string      `json:"key"`
 	Fields IssueFields `json:"fields"`
+}
+
+// Transition represents a workflow transition available to an issue.
+type Transition struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	To   struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"to"`
 }
 
 // IssueFields reflect the subset of issue fields we surface.
@@ -206,6 +219,92 @@ func (s *Service) AddComment(ctx context.Context, key string, comment any) error
 	if err != nil {
 		return err
 	}
+
+	return s.client.Do(req, nil)
+}
+
+// ListTransitions retrieves available workflow transitions for an issue.
+func (s *Service) ListTransitions(ctx context.Context, key string) ([]Transition, error) {
+	if key == "" {
+		return nil, fmt.Errorf("jira: issue key required")
+	}
+
+	path := fmt.Sprintf("/issue/%s/transitions", url.PathEscape(key))
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, map[string]string{"expand": "transitions.fields"}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var out struct {
+		Transitions []Transition `json:"transitions"`
+	}
+
+	if err := s.client.Do(req, &out); err != nil {
+		return nil, err
+	}
+
+	return out.Transitions, nil
+}
+
+// TransitionIssue moves an issue through a workflow transition.
+func (s *Service) TransitionIssue(ctx context.Context, key, transitionID string, fields map[string]any) error {
+	if key == "" {
+		return fmt.Errorf("jira: issue key required")
+	}
+	if transitionID == "" {
+		return fmt.Errorf("jira: transition id required")
+	}
+
+	body := map[string]any{
+		"transition": map[string]string{"id": transitionID},
+	}
+	if len(fields) > 0 {
+		body["fields"] = fields
+	}
+
+	path := fmt.Sprintf("/issue/%s/transitions", url.PathEscape(key))
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil, body)
+	if err != nil {
+		return err
+	}
+
+	return s.client.Do(req, nil)
+}
+
+// AddAttachment uploads a file attachment to the specified issue.
+func (s *Service) AddAttachment(ctx context.Context, key, filename string, data []byte) error {
+	if key == "" {
+		return fmt.Errorf("jira: issue key required")
+	}
+	if filename == "" {
+		return fmt.Errorf("jira: attachment filename required")
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("jira: attachment data required")
+	}
+
+	buf := new(bytes.Buffer)
+	writer := multipart.NewWriter(buf)
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return fmt.Errorf("jira: create attachment part: %w", err)
+	}
+	if _, err := part.Write(data); err != nil {
+		return fmt.Errorf("jira: write attachment: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("jira: close attachment writer: %w", err)
+	}
+
+	path := fmt.Sprintf("/issue/%s/attachments", url.PathEscape(key))
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil, atlassian.RawBody{
+		Reader:      buf,
+		ContentType: writer.FormDataContentType(),
+	})
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-Atlassian-Token", "nocheck")
 
 	return s.client.Do(req, nil)
 }
