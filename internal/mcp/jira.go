@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/jira"
-	"gitlab.com/your-org/atlassian-mcp/internal/state"
+	"github.com/ylchen07/atlassian-mcp/internal/jira"
+	"github.com/ylchen07/atlassian-mcp/internal/state"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"

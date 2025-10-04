@@ -13,8 +13,8 @@ import (
 
 	"log/slog"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/auth"
-	"gitlab.com/your-org/atlassian-mcp/internal/config"
+	"github.com/ylchen07/atlassian-mcp/internal/auth"
+	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
 // Client is a helper around the Atlassian REST API.

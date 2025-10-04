@@ -1,4 +1,4 @@
-module gitlab.com/your-org/atlassian-mcp
+module github.com/ylchen07/atlassian-mcp
 
 go 1.25.1
 

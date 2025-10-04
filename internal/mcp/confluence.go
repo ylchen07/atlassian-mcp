@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
+	"github.com/ylchen07/atlassian-mcp/internal/confluence"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"

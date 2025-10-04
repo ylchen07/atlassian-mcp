@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/atlassian"
+	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
 )
 
 // Service exposes Jira REST endpoints used by the MCP server.

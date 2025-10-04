@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/config"
+	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
 // Transport injects Atlassian authentication headers into outbound requests.
