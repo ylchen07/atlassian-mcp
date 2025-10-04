@@ -15,6 +15,7 @@
 - `make deps` → tidy modules using workspace cache.
 - `make test` → runs Go unit tests with CGO disabled.
 - `make lint` → executes golangci-lint with cache directories bound to repo.
+- `make build` → compiles the stdio server to `bin/jira-mcp`.
 - `make run` → starts stdio server; supply config via `-config` flag or env vars.
 
 Useful manual commands:

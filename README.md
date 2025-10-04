@@ -12,19 +12,29 @@ This project provides a Model Context Protocol (MCP) server implemented in Go us
 
 ## Getting Started
 
-1. Install Go 1.22+.
+1. Install Go 1.25+.
 2. Clone the repository and run `make deps` to tidy dependencies.
 3. Copy `config.example.yaml` to `config.yaml` and populate Jira/Confluence credentials.
-4. Run the server: `make run` (starts stdio MCP server).
+4. Build the binary: `make build` (outputs to `bin/jira-mcp`).
+5. Run the server: `make run` (starts stdio MCP server).
 
 ## Configuration
 
 Configuration is resolved from `config.yaml` and environment variables. See `config.example.yaml` for the full schema. Environment variables use the prefix `JIRA_MCP_`.
 
+### Environment variables
+
+- `JIRA_MCP_ATLASSIAN_SITE` – Atlassian cloud domain (e.g. `your-domain.atlassian.net`).
+- `JIRA_MCP_ATLASSIAN_JIRA_EMAIL` / `JIRA_MCP_ATLASSIAN_JIRA_API_TOKEN` – Jira API credentials when not using OAuth.
+- `JIRA_MCP_ATLASSIAN_JIRA_OAUTH_TOKEN` – Jira OAuth 2.0 token (set instead of email/api token).
+- `JIRA_MCP_ATLASSIAN_CONFLUENCE_EMAIL` / `JIRA_MCP_ATLASSIAN_CONFLUENCE_API_TOKEN` – Confluence API credentials when not using OAuth.
+- `JIRA_MCP_ATLASSIAN_CONFLUENCE_OAUTH_TOKEN` – Confluence OAuth 2.0 token (set instead of email/api token).
+
 ## Development
 
 - `make lint` – run `golangci-lint` (ensure version 2.x is installed locally).
 - `make test` – execute unit tests with a local build cache.
+- `make build` – compile the MCP server binary into `bin/`.
 - `make run` – launch the stdio MCP server.
 
 You can also run the linters directly:
@@ -35,7 +45,7 @@ CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/gol
 
 ### Configuration tips
 
-- Set `JIRA_MCP_ATLASSIAN_SITE`, `JIRA_MCP_ATLASSIAN_JIRA_EMAIL`, and related env vars to avoid committing secrets.
+- Set `JIRA_MCP_ATLASSIAN_SITE`, `JIRA_MCP_ATLASSIAN_JIRA_EMAIL`, and `JIRA_MCP_ATLASSIAN_CONFLUENCE_EMAIL` (with their corresponding tokens) to avoid committing secrets.
 - Use `config.yaml` only for local development; CI loads credentials from environment variables.
 
 ## CI/CD
