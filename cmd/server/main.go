@@ -7,13 +7,13 @@ import (
 
 	"log/slog"
 
-	atlassianclient "gitlab.com/your-org/atlassian-mcp/internal/atlassian"
-	"gitlab.com/your-org/atlassian-mcp/internal/config"
-	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
-	"gitlab.com/your-org/atlassian-mcp/internal/jira"
-	mcpserver "gitlab.com/your-org/atlassian-mcp/internal/mcp"
-	"gitlab.com/your-org/atlassian-mcp/internal/state"
-	"gitlab.com/your-org/atlassian-mcp/pkg/logging"
+	atlassianclient "github.com/ylchen07/atlassian-mcp/internal/atlassian"
+	"github.com/ylchen07/atlassian-mcp/internal/config"
+	"github.com/ylchen07/atlassian-mcp/internal/confluence"
+	"github.com/ylchen07/atlassian-mcp/internal/jira"
+	mcpserver "github.com/ylchen07/atlassian-mcp/internal/mcp"
+	"github.com/ylchen07/atlassian-mcp/internal/state"
+	"github.com/ylchen07/atlassian-mcp/pkg/logging"
 
 	"github.com/mark3labs/mcp-go/server"
 )

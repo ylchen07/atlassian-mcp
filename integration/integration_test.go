@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/your-org/atlassian-mcp/internal/atlassian"
-	"gitlab.com/your-org/atlassian-mcp/internal/config"
-	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
-	"gitlab.com/your-org/atlassian-mcp/internal/jira"
+	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
+	"github.com/ylchen07/atlassian-mcp/internal/config"
+	"github.com/ylchen07/atlassian-mcp/internal/confluence"
+	"github.com/ylchen07/atlassian-mcp/internal/jira"
 )
 
 func TestJiraListProjectsIntegration(t *testing.T) {

@@ -54,7 +54,7 @@ CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/gol
 
 ## CI/CD
 
-A `.gitlab-ci.yml` file is included for linting, testing, and building in GitLab pipelines.
+GitHub Actions (`.github/workflows/ci.yml`) runs lint and test jobs on pushes and pull requests. A legacy `.gitlab-ci.yml` remains for teams still executing the pipeline in GitLab.
 
 ## License
 

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+      - name: Run golangci-lint
+        env:
+          CGO_ENABLED: "0"
+          XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+          GOLANGCI_LINT_CACHE: ${{ github.workspace }}/.cache/golangci
+        run: golangci-lint run ./...
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: Run tests
+        env:
+          CGO_ENABLED: "0"
+          GOCACHE: ${{ github.workspace }}/.cache/go-build
+        run: go test ./...
