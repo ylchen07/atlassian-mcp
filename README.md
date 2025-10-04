@@ -32,7 +32,7 @@ Configuration is resolved from `config.yaml` and environment variables. See `con
 
 ## Development
 
-- `make lint` – run `golangci-lint` (ensure version 2.x is installed locally).
+- `make lint` – run `golangci-lint` (ensure v2.5.x or newer is installed locally; the config uses the v2 schema).
 - `make test` – execute unit tests with a local build cache.
 - `make build` – compile the MCP server binary into `bin/`.
 - `make run` – launch the stdio MCP server.
