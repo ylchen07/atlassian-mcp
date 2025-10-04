@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -77,6 +78,36 @@ func NewJiraTools(s *server.MCPServer, service *jira.Service, cache *state.Cache
 		mcp.NewTypedToolHandler(jt.handleAddComment),
 	)
 
+	s.AddTool(
+		mcp.NewTool(
+			"jira.list_transitions",
+			mcp.WithDescription("List available workflow transitions for an issue"),
+			mcp.WithInputSchema[JiraListTransitionsArgs](),
+			mcp.WithOutputSchema[JiraTransitionsResult](),
+		),
+		mcp.NewTypedToolHandler(jt.handleListTransitions),
+	)
+
+	s.AddTool(
+		mcp.NewTool(
+			"jira.transition_issue",
+			mcp.WithDescription("Move an issue using a workflow transition"),
+			mcp.WithInputSchema[JiraTransitionIssueArgs](),
+			mcp.WithOutputSchema[OperationStatus](),
+		),
+		mcp.NewTypedToolHandler(jt.handleTransitionIssue),
+	)
+
+	s.AddTool(
+		mcp.NewTool(
+			"jira.add_attachment",
+			mcp.WithDescription("Upload an attachment to a Jira issue"),
+			mcp.WithInputSchema[JiraAddAttachmentArgs](),
+			mcp.WithOutputSchema[OperationStatus](),
+		),
+		mcp.NewTypedToolHandler(jt.handleAddAttachment),
+	)
+
 	return jt
 }
 
@@ -101,6 +132,40 @@ type JiraProjectListResult struct {
 // OperationStatus represents an acknowledgement response for state-changing operations.
 type OperationStatus struct {
 	Message string `json:"message"`
+}
+
+// JiraListTransitionsArgs parameters for retrieving workflow transitions.
+type JiraListTransitionsArgs struct {
+	Key string `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
+}
+
+// JiraTransition represents a workflow step that can be applied to an issue.
+type JiraTransition struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	To   struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"to"`
+}
+
+// JiraTransitionsResult wraps transition responses.
+type JiraTransitionsResult struct {
+	Transitions []JiraTransition `json:"transitions"`
+}
+
+// JiraTransitionIssueArgs parameters for executing a transition.
+type JiraTransitionIssueArgs struct {
+	Key          string         `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
+	TransitionID string         `json:"transitionId" jsonschema:"required" jsonschema_description:"Workflow transition ID"`
+	Fields       map[string]any `json:"fields,omitempty" jsonschema_description:"Optional field updates to apply"`
+}
+
+// JiraAddAttachmentArgs parameters for uploading an attachment.
+type JiraAddAttachmentArgs struct {
+	Key      string `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
+	FileName string `json:"fileName" jsonschema:"required" jsonschema_description:"Attachment file name"`
+	Data     string `json:"data" jsonschema:"required" jsonschema_description:"Base64-encoded file contents"`
 }
 
 func (j *JiraTools) handleListProjects(ctx context.Context, _ mcp.CallToolRequest, args JiraListProjectsArgs) (*mcp.CallToolResult, error) {
@@ -286,5 +351,47 @@ func (j *JiraTools) handleAddComment(ctx context.Context, _ mcp.CallToolRequest,
 	}
 
 	fallback := fmt.Sprintf("Added comment to Jira issue %s", args.Key)
+	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+}
+
+func (j *JiraTools) handleListTransitions(ctx context.Context, _ mcp.CallToolRequest, args JiraListTransitionsArgs) (*mcp.CallToolResult, error) {
+	transitions, err := j.service.ListTransitions(ctx, args.Key)
+	if err != nil {
+		return mcp.NewToolResultErrorFromErr("jira list transitions failed", err), nil
+	}
+
+	result := JiraTransitionsResult{Transitions: make([]JiraTransition, 0, len(transitions))}
+	for _, tr := range transitions {
+		result.Transitions = append(result.Transitions, JiraTransition{
+			ID:   tr.ID,
+			Name: tr.Name,
+			To:   tr.To,
+		})
+	}
+
+	fallback := fmt.Sprintf("Found %d transitions for %s", len(result.Transitions), args.Key)
+	return mcp.NewToolResultStructured(result, fallback), nil
+}
+
+func (j *JiraTools) handleTransitionIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraTransitionIssueArgs) (*mcp.CallToolResult, error) {
+	if err := j.service.TransitionIssue(ctx, args.Key, args.TransitionID, args.Fields); err != nil {
+		return mcp.NewToolResultErrorFromErr("jira transition issue failed", err), nil
+	}
+
+	fallback := fmt.Sprintf("Transitioned %s using %s", args.Key, args.TransitionID)
+	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+}
+
+func (j *JiraTools) handleAddAttachment(ctx context.Context, _ mcp.CallToolRequest, args JiraAddAttachmentArgs) (*mcp.CallToolResult, error) {
+	data, err := base64.StdEncoding.DecodeString(args.Data)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("invalid base64 data: %v", err)), nil
+	}
+
+	if err := j.service.AddAttachment(ctx, args.Key, args.FileName, data); err != nil {
+		return mcp.NewToolResultErrorFromErr("jira add attachment failed", err), nil
+	}
+
+	fallback := fmt.Sprintf("Uploaded attachment %s to %s", args.FileName, args.Key)
 	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
 }

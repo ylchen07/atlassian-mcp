@@ -4,6 +4,7 @@ GOTEST=CGO_ENABLED=0 GOCACHE=$(GOCACHE_DIR) $(GOCMD) test ./...
 GOTIDY=GOCACHE=$(GOCACHE_DIR) $(GOCMD) mod tidy
 GORUN=GOCACHE=$(GOCACHE_DIR) $(GOCMD) run ./cmd/server
 GOLANGCI_LINT?=golangci-lint
+LINT_ENV=CGO_ENABLED=0 XDG_CACHE_HOME=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci
 
 .PHONY: deps fmt lint test run
 
@@ -14,7 +15,7 @@ fmt:
 	$(GOCMD) fmt ./...
 
 lint:
-	$(GOLANGCI_LINT) run ./...
+	$(LINT_ENV) $(GOLANGCI_LINT) run ./...
 
 test:
 	$(GOTEST)
