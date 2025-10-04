@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/your-org/jira-mcp/internal/atlassian"
-	"gitlab.com/your-org/jira-mcp/internal/auth"
-	"gitlab.com/your-org/jira-mcp/internal/config"
+	"gitlab.com/your-org/atlassian-mcp/internal/atlassian"
+	"gitlab.com/your-org/atlassian-mcp/internal/auth"
+	"gitlab.com/your-org/atlassian-mcp/internal/config"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

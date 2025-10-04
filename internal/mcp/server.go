@@ -3,9 +3,9 @@ package mcp
 import (
 	"log/slog"
 
-	"gitlab.com/your-org/jira-mcp/internal/confluence"
-	"gitlab.com/your-org/jira-mcp/internal/jira"
-	"gitlab.com/your-org/jira-mcp/internal/state"
+	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
+	"gitlab.com/your-org/atlassian-mcp/internal/jira"
+	"gitlab.com/your-org/atlassian-mcp/internal/state"
 
 	"github.com/mark3labs/mcp-go/server"
 )

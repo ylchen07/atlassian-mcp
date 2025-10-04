@@ -2,19 +2,18 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 
 	"log/slog"
 
-	atlassianclient "gitlab.com/your-org/jira-mcp/internal/atlassian"
-	"gitlab.com/your-org/jira-mcp/internal/config"
-	"gitlab.com/your-org/jira-mcp/internal/confluence"
-	"gitlab.com/your-org/jira-mcp/internal/jira"
-	mcpserver "gitlab.com/your-org/jira-mcp/internal/mcp"
-	"gitlab.com/your-org/jira-mcp/internal/state"
-	"gitlab.com/your-org/jira-mcp/pkg/logging"
+	atlassianclient "gitlab.com/your-org/atlassian-mcp/internal/atlassian"
+	"gitlab.com/your-org/atlassian-mcp/internal/config"
+	"gitlab.com/your-org/atlassian-mcp/internal/confluence"
+	"gitlab.com/your-org/atlassian-mcp/internal/jira"
+	mcpserver "gitlab.com/your-org/atlassian-mcp/internal/mcp"
+	"gitlab.com/your-org/atlassian-mcp/internal/state"
+	"gitlab.com/your-org/atlassian-mcp/pkg/logging"
 
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -32,17 +31,25 @@ func main() {
 
 	logger := logging.New(cfg.Server.LogLevel)
 
-	siteBase := ensureHTTPS(cfg.Atlassian.Site)
-	jiraAPI := fmt.Sprintf("%s/rest/api/3", siteBase)
-	confluenceAPI := fmt.Sprintf("%s/wiki/rest/api", siteBase)
+	jiraSite := ensureHTTPS(cfg.Atlassian.Jira.Site)
+	jiraAPI := buildJiraAPIBase(jiraSite)
+	if apiOverride := ensureHTTPS(cfg.Atlassian.Jira.APIBase); apiOverride != "" {
+		jiraAPI = strings.TrimRight(apiOverride, "/")
+	}
 
-	jiraClient, err := atlassianclient.NewClient(jiraAPI, cfg.Atlassian.Jira, logger)
+	confluenceSite := ensureHTTPS(cfg.Atlassian.Confluence.Site)
+	confluenceAPI := buildConfluenceAPIBase(confluenceSite)
+	if apiOverride := ensureHTTPS(cfg.Atlassian.Confluence.APIBase); apiOverride != "" {
+		confluenceAPI = strings.TrimRight(apiOverride, "/")
+	}
+
+	jiraClient, err := atlassianclient.NewClient(jiraAPI, cfg.Atlassian.Jira.ServiceCredentials, logger)
 	if err != nil {
 		logger.Error("failed to initialize Jira client", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	confluenceClient, err := atlassianclient.NewClient(confluenceAPI, cfg.Atlassian.Confluence, logger)
+	confluenceClient, err := atlassianclient.NewClient(confluenceAPI, cfg.Atlassian.Confluence.ServiceCredentials, logger)
 	if err != nil {
 		logger.Error("failed to initialize Confluence client", slog.Any("error", err))
 		os.Exit(1)
@@ -57,8 +64,8 @@ func main() {
 		JiraService:       jiraService,
 		ConfluenceService: confluenceService,
 		Cache:             stateCache,
-		JiraBaseURL:       siteBase,
-		ConfluenceBaseURL: fmt.Sprintf("%s/wiki", siteBase),
+		JiraBaseURL:       jiraSite,
+		ConfluenceBaseURL: buildConfluenceUIBase(confluenceSite),
 		Logger:            logger,
 	})
 
@@ -79,4 +86,40 @@ func ensureHTTPS(site string) string {
 	}
 
 	return "https://" + strings.TrimRight(trimmed, "/")
+}
+
+func buildJiraAPIBase(site string) string {
+	trimmed := strings.TrimRight(site, "/")
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasSuffix(trimmed, "/rest/api/3") {
+		return trimmed
+	}
+	return trimmed + "/rest/api/3"
+}
+
+func buildConfluenceAPIBase(site string) string {
+	trimmed := strings.TrimRight(site, "/")
+	if trimmed == "" {
+		return ""
+	}
+	if strings.Contains(trimmed, "/rest/") {
+		return trimmed
+	}
+	if strings.HasSuffix(trimmed, "/wiki") {
+		return trimmed + "/rest/api"
+	}
+	return trimmed + "/wiki/rest/api"
+}
+
+func buildConfluenceUIBase(site string) string {
+	trimmed := strings.TrimRight(site, "/")
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasSuffix(trimmed, "/wiki") {
+		return trimmed
+	}
+	return trimmed + "/wiki"
 }

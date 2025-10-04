@@ -2,7 +2,7 @@
 .cache/
 
 # Executables
-jira-mcp
+bin/
 *.exe
 *.dll
 *.so

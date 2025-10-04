@@ -1,39 +1,23 @@
-# Jira MCP Server Agent Notes
+# Repository Guidelines
 
-## Project Overview
-- Implements an MCP stdio server using `github.com/mark3labs/mcp-go`.
-- Provides tooling for Atlassian Jira (project listing, JQL search, issue lifecycle) and Confluence (spaces, search, page CRUD).
-- Configuration resolved via `config.yaml` plus `JIRA_MCP_*` environment overrides.
+## Project Structure & Module Organization
+The stdio server entrypoint lives in `cmd/server`, with handler wiring and CLI tests alongside `main.go`. Core logic is grouped under `internal` (e.g., `jira`, `confluence`, `auth`, `state`) while cross-cutting helpers sit in `internal/mcp` and `pkg/logging`. Shared fixtures and HTTP transcripts are under `testdata`. Build output lands in `bin/`, and integration smoke checks reside in `integration/`.
 
-## Tech Stack
-- Go 1.25
-- `mcp-go` v0.41.1 for MCP protocol helpers.
-- `github.com/spf13/viper` for config management.
-- `golangci-lint` v2 for linting (configured in `.golangci.yml`).
+## Build, Test, and Development Commands
+- `make deps` – tidy Go modules using the repo-local cache.
+- `make lint` – run `golangci-lint` v2 with project rules.
+- `make test` – execute unit tests (`CGO_ENABLED=0`) across all packages.
+- `make build` – compile the stdio server to `bin/atlassian-mcp`.
+- `make run -e CONFIG=...` – launch the MCP server; pass config path or rely on env overrides.
 
-## Local Workflow
-- `make deps` → tidy modules using workspace cache.
-- `make test` → runs Go unit tests with CGO disabled.
-- `make lint` → executes golangci-lint with cache directories bound to repo.
-- `make build` → compiles the stdio server to `bin/jira-mcp`.
-- `make run` → starts stdio server; supply config via `-config` flag or env vars.
+## Coding Style & Naming Conventions
+Go files must be formatted with `gofmt`; `goimports` is recommended before committing. Follow standard Go naming—exported types use PascalCase, locals use mixedCase, constants are SCREAMING_SNAKE when truly constant. Limit package exports to what callers need and keep MCP tools in cohesive subpackages. Lint fixes should satisfy `.golangci.yml` without suppressions.
 
-Useful manual commands:
-```bash
-CGO_ENABLED=0 GOCACHE=$(pwd)/.cache/go-build go test ./...
-CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/golangci golangci-lint run ./...
-```
+## Testing Guidelines
+Unit tests live next to implementations (`*_test.go`). Favour table-driven tests with descriptive `name` fields. When stubbing Atlassian APIs, store fixtures in `testdata/<service>/`. Run `go test ./...` or `make test` before every push. Integration tests in `integration/` are skipped unless credentials are provided—gate them behind environment checks and avoid hitting live APIs by default.
 
-## Testing & Coverage
-- Unit tests cover config validation, state cache, helper utilities, and HTTP service interactions via mock transports.
-- Confluence tests validate list/search/create/update flows; Jira tests cover project search and issue search payloads.
-- Integration tests against live Atlassian APIs are not included; add before production usage.
+## Commit & Pull Request Guidelines
+Use imperative, descriptive commit subjects (e.g., `feat: add Jira transition cache`). Group related changes per commit and include context in the body when behaviour shifts. PRs should link Jira tickets when available, outline configuration changes, and note required follow-up actions. Attach screenshots or sample CLI transcripts when the change affects user interactions.
 
-## CI/CD
-- `.gitlab-ci.yml` defines lint and test stages using Go 1.25 image.
-- Pipeline installs `golangci-lint` 1.60.3 explicitly before lint stage.
-
-## Open Follow-ups
-- Add Jira transition/comment retrieval handlers and Confluence attachment support.
-- Provide integration test harness guarded by environment variables.
-- Consider secrets management integration (e.g., Vault) for production deployments.
+## Security & Configuration Tips
+Never commit secrets; rely on `config.yaml` only for local testing and prefer environment variables such as `ATLASSIAN_JIRA_API_TOKEN`. Treat cached Atlassian responses in `internal/state` as ephemeral; clear them if sharing logs. When developing against live tenants, enable rate-limit guards and confirm scopes before merging.

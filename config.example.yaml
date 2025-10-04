@@ -1,10 +1,15 @@
 server:
   log_level: info
 atlassian:
-  site: your-domain.atlassian.net
+  # Optional legacy fallback; if provided it is used when per-service sites are omitted.
+  # site: your-domain.atlassian.net
   jira:
+    site: https://jira.example.com
+    # api_base: https://jira.example.com/rest/api/3
     email: user@example.com
     api_token: your_api_token
   confluence:
+    site: https://confluence.example.com
+    # api_base: https://confluence.example.com/wiki/rest/api
     email: user@example.com
     api_token: your_api_token

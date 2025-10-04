@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"gitlab.com/your-org/jira-mcp/internal/atlassian"
+	"gitlab.com/your-org/atlassian-mcp/internal/atlassian"
 )
 
 // Service exposes Confluence REST endpoints used by the MCP server.

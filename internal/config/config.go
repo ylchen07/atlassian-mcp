@@ -22,9 +22,17 @@ type ServerConfig struct {
 
 // AtlassianConfig encapsulates Jira and Confluence settings.
 type AtlassianConfig struct {
-	Site       string             `mapstructure:"site"`
-	Jira       ServiceCredentials `mapstructure:"jira"`
-	Confluence ServiceCredentials `mapstructure:"confluence"`
+	// Site represents the legacy shared hostname; kept for backwards compatibility.
+	Site       string        `mapstructure:"site"`
+	Jira       ServiceConfig `mapstructure:"jira"`
+	Confluence ServiceConfig `mapstructure:"confluence"`
+}
+
+// ServiceConfig describes connectivity for a single Atlassian product.
+type ServiceConfig struct {
+	Site               string `mapstructure:"site"`
+	APIBase            string `mapstructure:"api_base"`
+	ServiceCredentials `mapstructure:",squash"`
 }
 
 // ServiceCredentials describes authentication for a single Atlassian product.
@@ -51,7 +59,6 @@ func Load(path string) (*Config, error) {
 		v.AddConfigPath(".")
 	}
 
-	v.SetEnvPrefix("jira_mcp")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -69,6 +76,8 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("config: unmarshal: %w", err)
 	}
 
+	cfg.applyDefaults()
+
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -77,15 +86,11 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	if c.Atlassian.Site == "" {
-		return fmt.Errorf("config: atlassian.site is required")
-	}
-
-	if err := c.Atlassian.Jira.validate("jira"); err != nil {
+	if err := c.Atlassian.Jira.validate("atlassian.jira"); err != nil {
 		return err
 	}
 
-	if err := c.Atlassian.Confluence.validate("confluence"); err != nil {
+	if err := c.Atlassian.Confluence.validate("atlassian.confluence"); err != nil {
 		return err
 	}
 
@@ -93,6 +98,34 @@ func (c *Config) validate() error {
 		c.Server.LogLevel = "info"
 	}
 
+	return nil
+}
+
+func (c *Config) applyDefaults() {
+	root := strings.TrimSpace(c.Atlassian.Site)
+	c.Atlassian.Site = root
+
+	c.Atlassian.Jira.Site = normalizeServiceSite(c.Atlassian.Jira.Site, root)
+	c.Atlassian.Jira.APIBase = strings.TrimSpace(c.Atlassian.Jira.APIBase)
+	c.Atlassian.Confluence.Site = normalizeServiceSite(c.Atlassian.Confluence.Site, root)
+	c.Atlassian.Confluence.APIBase = strings.TrimSpace(c.Atlassian.Confluence.APIBase)
+}
+
+func normalizeServiceSite(serviceSite, fallback string) string {
+	trimmed := strings.TrimSpace(serviceSite)
+	if trimmed != "" {
+		return trimmed
+	}
+	return strings.TrimSpace(fallback)
+}
+
+func (s ServiceConfig) validate(name string) error {
+	if strings.TrimSpace(s.Site) == "" {
+		return fmt.Errorf("config: %s.site is required", name)
+	}
+	if err := s.ServiceCredentials.validate(name); err != nil {
+		return err
+	}
 	return nil
 }
 
