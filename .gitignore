@@ -1,0 +1,12 @@
+# Go build cache
+.cache/
+
+# Executables
+jira-mcp
+*.exe
+*.dll
+*.so
+
+# IDE files
+.vscode/
+.idea/

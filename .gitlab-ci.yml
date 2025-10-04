@@ -1,0 +1,25 @@
+image: golang:1.25
+
+variables:
+  GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
+  CGO_ENABLED: "0"
+
+stages:
+  - lint
+  - test
+
+before_script:
+  - mkdir -p "$GOCACHE"
+  - go env -w GOCACHE=$GOCACHE
+  - go mod download
+
+lint:
+  stage: lint
+  script:
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
+    - golangci-lint run ./...
+
+test:
+  stage: test
+  script:
+    - go test ./...

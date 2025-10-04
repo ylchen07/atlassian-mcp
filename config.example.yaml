@@ -1,0 +1,10 @@
+server:
+  log_level: info
+atlassian:
+  site: your-domain.atlassian.net
+  jira:
+    email: user@example.com
+    api_token: your_api_token
+  confluence:
+    email: user@example.com
+    api_token: your_api_token

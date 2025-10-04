@@ -1,0 +1,19 @@
+version: 2
+run:
+  timeout: 5m
+  tests: true
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gocyclo
+  disable:
+    - errcheck
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+issues:
+  exclude-dirs:
+    - testdata
+  max-issues-per-linter: 50
+  max-same-issues: 10
