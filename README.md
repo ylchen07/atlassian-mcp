@@ -1,60 +1,116 @@
 # Atlassian MCP Server
 
-This project provides a Model Context Protocol (MCP) server implemented in Go using the [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go) framework. The server exposes tooling for interacting with Atlassian Jira and Confluence over stdio.
+The Atlassian MCP server is a Go implementation of the Model Context Protocol. It exposes Jira and Confluence tooling over stdio using [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go), enabling AI copilots and other MCP-aware clients to automate Atlassian workflows.
 
-## Features
+## Capabilities
 
-- Jira support: list projects, search issues (JQL), create issues, update fields, manage comments.
-- Confluence support: list spaces, search pages, create and update pages.
-- Configurable authentication via Atlassian API tokens or OAuth client credentials.
-- Structured error handling with rate limit awareness.
-- Extensible MCP tool registry built on `mcp-go`.
+- Idiomatic Jira and Confluence clients with shared authentication, caching, and structured error reporting.
+- Ready-to-use MCP tools for common Jira and Confluence tasks (projects, issues, pages, search, transitions, attachments, and comments).
+- Configuration by file or environment variables with `.env` support for local development.
+- Make-based developer workflow for dependency tidying, linting, testing, and building a standalone stdio binary.
 
-## Getting Started
+### Jira tools
 
-1. Install Go 1.25+.
-2. Clone the repository and run `make deps` to tidy dependencies.
-3. Copy `config.example.yaml` to `config.yaml` and populate Jira/Confluence credentials.
-4. Build the binary: `make build` (outputs to `bin/atlassian-mcp`).
-5. Run the server: `make run` (starts stdio MCP server).
+| Tool ID | Description |
+| --- | --- |
+| `jira.list_projects` | Return the accessible Jira projects (cached for the session). |
+| `jira.search_issues` | Run a JQL query and return issue summaries. |
+| `jira.create_issue` | Create a new issue in the specified project. |
+| `jira.update_issue` | Update issue fields with partial payloads. |
+| `jira.add_comment` | Append a comment using Atlassian document format. |
+| `jira.list_transitions` | Retrieve available workflow transitions for an issue. |
+| `jira.transition_issue` | Apply a workflow transition, optionally updating fields. |
+| `jira.add_attachment` | Upload binary attachments to an issue. |
+
+### Confluence tools
+
+| Tool ID | Description |
+| --- | --- |
+| `confluence.list_spaces` | List spaces available to the authenticated account. |
+| `confluence.search_pages` | Execute CQL searches and return page summaries. |
+| `confluence.create_page` | Create pages with optional parent relationships. |
+| `confluence.update_page` | Update existing pages with optimistic version control. |
+
+## Prerequisites
+
+- Go 1.25+ (matching the module directive in `go.mod`). Install via `gotip` or a Go distribution that provides 1.25 if you are building before the official release.
+- Atlassian Jira and/or Confluence site with an API token or OAuth access token (per service).
+
+## Quick Start
+
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone https://github.com/ylchen07/atlassian-mcp.git
+   cd atlassian-mcp
+   make deps
+   ```
+2. Copy the sample configuration and fill in your tenant details:
+   ```bash
+   cp config.example.yaml config.yaml
+   ```
+   Alternatively, copy `.env.example` to `.env` and export credentials there. Environment variables always override file-based values.
+3. Build the stdio binary (emits `bin/atlassian-mcp`):
+   ```bash
+   make build
+   ```
+4. Run the server:
+   ```bash
+   # Uses config.yaml in the repo root by default
+   make run
+
+   # or explicitly point to a config file/directory
+   go run ./cmd/server -config /path/to/config.yaml
+   ```
+
+Connect the resulting stdio process to any MCP-compatible client (e.g. mark3labs tools, Automations, IDE agents).
 
 ## Configuration
 
-Configuration is resolved from `config.yaml` and environment variables. See `config.example.yaml` for the full schema.
+Configuration can be supplied by:
 
-### Environment variables
+- `config.yaml` or another file passed via `-config` (see `config.example.yaml` for the full schema).
+- Environment variables (`viper` automatically maps uppercase underscore-separated keys).
+- A local `.env` file loaded by tooling such as `direnv` or `dotenv`.
 
-- `ATLASSIAN_JIRA_SITE` – Jira base URL (e.g. `https://jira.internal.example`).
-- `ATLASSIAN_JIRA_API_BASE` – Optional Jira REST API base override (defaults to `<ATLASSIAN_JIRA_SITE>/rest/api/3`).
-- `ATLASSIAN_JIRA_EMAIL` / `ATLASSIAN_JIRA_API_TOKEN` – Jira API credentials when not using OAuth.
-- `ATLASSIAN_JIRA_OAUTH_TOKEN` – Jira OAuth 2.0 token (set instead of email/api token).
-- `ATLASSIAN_CONFLUENCE_SITE` – Confluence base URL (e.g. `https://confluence.internal.example`).
-- `ATLASSIAN_CONFLUENCE_API_BASE` – Optional Confluence REST API base (defaults to `<ATLASSIAN_CONFLUENCE_SITE>/wiki/rest/api`).
-- `ATLASSIAN_CONFLUENCE_EMAIL` / `ATLASSIAN_CONFLUENCE_API_TOKEN` – Confluence API credentials when not using OAuth.
-- `ATLASSIAN_CONFLUENCE_OAUTH_TOKEN` – Confluence OAuth 2.0 token (set instead of email/api token).
-- `ATLASSIAN_SITE` – Legacy shared hostname fallback when per-service sites are unset.
+Key environment variables:
 
-## Development
+- `ATLASSIAN_JIRA_SITE` / `ATLASSIAN_CONFLUENCE_SITE` – Base URLs for each product (`https://…`).
+- `ATLASSIAN_JIRA_API_BASE` / `ATLASSIAN_CONFLUENCE_API_BASE` – Optional REST overrides if your deployment is proxied.
+- `ATLASSIAN_JIRA_EMAIL` & `ATLASSIAN_JIRA_API_TOKEN` – Basic auth credentials for Jira.
+- `ATLASSIAN_CONFLUENCE_EMAIL` & `ATLASSIAN_CONFLUENCE_API_TOKEN` – Basic auth credentials for Confluence.
+- `ATLASSIAN_JIRA_OAUTH_TOKEN` / `ATLASSIAN_CONFLUENCE_OAUTH_TOKEN` – OAuth bearer token alternatives to email/API tokens.
+- `ATLASSIAN_SITE` – Legacy shared hostname fallback used when per-product sites are omitted.
+- `SERVER_LOG_LEVEL` – Optional log level (`debug`, `info`, `warn`, `error`).
 
-- `make lint` – run `golangci-lint` (ensure v2.5.x or newer is installed locally; the config uses the v2 schema).
-- `make test` – execute unit tests with a local build cache.
-- `make build` – compile the MCP server binary into `bin/`.
-- `make run` – launch the stdio MCP server.
+For local development, prefer environment variables over committing secrets to `config.yaml`.
 
-You can also run the linters directly:
+## Development Workflow
+
+- `make deps` – Run `go mod tidy` using the repo-scoped cache.
+- `make fmt` – Format Go sources with `gofmt` across all packages.
+- `make lint` – Run `golangci-lint`; use v1.55 or newer (config schema version 2).
+- `make test` – Execute unit tests with `CGO_ENABLED=0`.
+- `make build` – Produce the stdio binary in `bin/`.
+- `make run` – Launch the MCP server via `go run ./cmd/server`.
+
+The lint target can also be invoked manually:
 
 ```bash
 CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/golangci golangci-lint run ./...
 ```
 
-### Configuration tips
+## Testing
 
-- Set `ATLASSIAN_SITE`, `ATLASSIAN_JIRA_EMAIL`, and `ATLASSIAN_CONFLUENCE_EMAIL` (with their corresponding tokens) to avoid committing secrets.
-- Use `config.yaml` only for local development; CI loads credentials from environment variables.
+- Unit tests: `make test` or `go test ./...`.
+- Integration smoke tests (require real credentials):
+  ```bash
+  MCP_INTEGRATION=1 go test -tags=integration ./integration
+  ```
+  These tests respect the same environment variables as the server and will be skipped unless the required credentials are present.
 
 ## CI/CD
 
-GitHub Actions (`.github/workflows/ci.yml`) runs lint and test jobs on pushes and pull requests. A legacy `.gitlab-ci.yml` remains for teams still executing the pipeline in GitLab.
+GitHub Actions (`.github/workflows/ci.yml`) runs lint and test jobs on every push and pull request. A legacy `.gitlab-ci.yml` is provided for teams executing the pipeline in GitLab.
 
 ## License
 
