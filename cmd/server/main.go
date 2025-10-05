@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"os"
 	"strings"
 
@@ -16,17 +16,34 @@ import (
 	"github.com/ylchen07/atlassian-mcp/pkg/logging"
 
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	var cfgPath string
-	flag.StringVar(&cfgPath, "config", "", "Path to configuration directory or file")
-	flag.Parse()
+var (
+	cfgPath string
+	rootCmd = &cobra.Command{
+		Use:   "atlassian-mcp",
+		Short: "Run the Atlassian MCP stdio server",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(cfgPath)
+		},
+	}
+)
 
-	cfg, err := config.Load(cfgPath)
-	if err != nil {
-		slog.Default().Error("failed to load configuration", slog.Any("error", err))
+func init() {
+	rootCmd.Flags().StringVarP(&cfgPath, "config", "c", "", "Path to configuration directory or file")
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
+	}
+}
+
+func run(path string) error {
+	cfg, err := config.Load(path)
+	if err != nil {
+		return fmt.Errorf("load configuration: %w", err)
 	}
 
 	logger := logging.New(cfg.Server.LogLevel)
@@ -46,13 +63,13 @@ func main() {
 	jiraClient, err := atlassianclient.NewClient(jiraAPI, cfg.Atlassian.Jira.ServiceCredentials, logger)
 	if err != nil {
 		logger.Error("failed to initialize Jira client", slog.Any("error", err))
-		os.Exit(1)
+		return fmt.Errorf("initialize jira client: %w", err)
 	}
 
 	confluenceClient, err := atlassianclient.NewClient(confluenceAPI, cfg.Atlassian.Confluence.ServiceCredentials, logger)
 	if err != nil {
 		logger.Error("failed to initialize Confluence client", slog.Any("error", err))
-		os.Exit(1)
+		return fmt.Errorf("initialize confluence client: %w", err)
 	}
 
 	stateCache := state.NewCache()
@@ -71,8 +88,10 @@ func main() {
 
 	if err := server.ServeStdio(srv); err != nil {
 		logger.Error("stdio server terminated", slog.Any("error", err))
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
 func ensureHTTPS(site string) string {
