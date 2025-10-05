@@ -7,6 +7,11 @@ bin/
 *.dll
 *.so
 
+# Environment files
+.env
+.env.local
+.envrc
+
 # IDE files
 .vscode/
 .idea/
