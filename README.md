@@ -72,6 +72,8 @@ Configuration can be supplied by:
 - Environment variables (`viper` automatically maps uppercase underscore-separated keys).
 - A local `.env` file loaded by tooling such as `direnv` or `dotenv`.
 
+The loader searches the current working directory first, then `~/.config/atlassian-mcp/config.yaml`, before falling back to environment variables.
+
 Key environment variables:
 
 - `ATLASSIAN_JIRA_SITE` / `ATLASSIAN_CONFLUENCE_SITE` – Base URLs for each product (`https://…`).
