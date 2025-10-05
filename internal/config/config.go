@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -57,6 +58,10 @@ func Load(path string) (*Config, error) {
 		}
 	} else {
 		v.AddConfigPath(".")
+		if cfgDir, err := os.UserConfigDir(); err == nil && cfgDir != "" {
+			defaultPath := filepath.Join(cfgDir, "atlassian-mcp")
+			v.AddConfigPath(defaultPath)
+		}
 	}
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
