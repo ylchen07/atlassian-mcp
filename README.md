@@ -59,7 +59,7 @@ The Atlassian MCP server is a Go implementation of the Model Context Protocol. I
    make run
 
    # or explicitly point to a config file/directory
-   go run ./cmd/server -config /path/to/config.yaml
+   go run ./cmd/server --config /path/to/config.yaml
    ```
 
 Connect the resulting stdio process to any MCP-compatible client (e.g. mark3labs tools, Automations, IDE agents).
@@ -68,7 +68,7 @@ Connect the resulting stdio process to any MCP-compatible client (e.g. mark3labs
 
 Configuration can be supplied by:
 
-- `config.yaml` or another file passed via `-config` (see `config.example.yaml` for the full schema).
+- `config.yaml` or another file passed via `--config` (see `config.example.yaml` for the full schema).
 - Environment variables (`viper` automatically maps uppercase underscore-separated keys).
 - A local `.env` file loaded by tooling such as `direnv` or `dotenv`.
 
