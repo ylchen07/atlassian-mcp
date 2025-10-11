@@ -7,17 +7,21 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
-	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
+	jirav2 "github.com/ctreminiom/go-atlassian/v2/jira/v2"
 )
+
+const apiPrefix = "/rest/api/2"
 
 // Service exposes Jira REST endpoints used by the MCP server.
 type Service struct {
-	client *atlassian.Client
+	client *jirav2.Client
 }
 
-// NewService creates a Jira service using the provided Atlassian client.
-func NewService(client *atlassian.Client) *Service {
+// NewService creates a Jira service using the provided go-atlassian client.
+func NewService(client *jirav2.Client) *Service {
 	return &Service{client: client}
 }
 
@@ -77,12 +81,18 @@ type SearchResult struct {
 
 // ListProjects returns the accessible projects.
 func (s *Service) ListProjects(ctx context.Context, maxResults int) ([]Project, error) {
-	query := map[string]string{
-		"expand":     "lead",
-		"maxResults": fmt.Sprintf("%d", maxResults),
+	params := url.Values{}
+	params.Set("expand", "lead")
+	if maxResults > 0 {
+		params.Set("maxResults", strconv.Itoa(maxResults))
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", "/project/search", query, nil)
+	path := apiPath("project/search")
+	if encoded := params.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +100,7 @@ func (s *Service) ListProjects(ctx context.Context, maxResults int) ([]Project, 
 	var res struct {
 		Values []Project `json:"values"`
 	}
-
-	if err := s.client.Do(req, &res); err != nil {
+	if _, err := s.client.Call(req, &res); err != nil {
 		return nil, err
 	}
 
@@ -99,34 +108,34 @@ func (s *Service) ListProjects(ctx context.Context, maxResults int) ([]Project, 
 }
 
 // SearchIssues executes a JQL search.
-func (s *Service) SearchIssues(ctx context.Context, req SearchRequest) (*SearchResult, error) {
+func (s *Service) SearchIssues(ctx context.Context, sr SearchRequest) (*SearchResult, error) {
 	body := map[string]any{
-		"jql": req.JQL,
+		"jql": sr.JQL,
 	}
 
-	if req.StartAt > 0 {
-		body["startAt"] = req.StartAt
+	if sr.StartAt > 0 {
+		body["startAt"] = sr.StartAt
 	}
 
-	if req.MaxResults > 0 {
-		body["maxResults"] = req.MaxResults
+	if sr.MaxResults > 0 {
+		body["maxResults"] = sr.MaxResults
 	}
 
-	if len(req.Fields) > 0 {
-		body["fields"] = req.Fields
+	if len(sr.Fields) > 0 {
+		body["fields"] = sr.Fields
 	}
 
-	if len(req.Expand) > 0 {
-		body["expand"] = req.Expand
+	if len(sr.Expand) > 0 {
+		body["expand"] = sr.Expand
 	}
 
-	httpReq, err := s.client.NewRequest(ctx, "POST", "/search", nil, body)
+	req, err := s.client.NewRequest(ctx, http.MethodPost, apiPath("search"), "", body)
 	if err != nil {
 		return nil, err
 	}
 
 	var out SearchResult
-	if err := s.client.Do(httpReq, &out); err != nil {
+	if _, err := s.client.Call(req, &out); err != nil {
 		return nil, err
 	}
 
@@ -170,13 +179,13 @@ func (s *Service) CreateIssue(ctx context.Context, input IssueInput) (*Issue, er
 
 	body := map[string]any{"fields": fields}
 
-	req, err := s.client.NewRequest(ctx, "POST", "/issue", nil, body)
+	req, err := s.client.NewRequest(ctx, http.MethodPost, apiPath("issue"), "", body)
 	if err != nil {
 		return nil, err
 	}
 
 	var created Issue
-	if err := s.client.Do(req, &created); err != nil {
+	if _, err := s.client.Call(req, &created); err != nil {
 		return nil, err
 	}
 
@@ -193,14 +202,15 @@ func (s *Service) UpdateIssue(ctx context.Context, key string, fields map[string
 	}
 
 	body := map[string]any{"fields": fields}
-	path := fmt.Sprintf("/issue/%s", url.PathEscape(key))
+	path := apiPath("issue", url.PathEscape(key))
 
-	req, err := s.client.NewRequest(ctx, "PUT", path, nil, body)
+	req, err := s.client.NewRequest(ctx, http.MethodPut, path, "", body)
 	if err != nil {
 		return err
 	}
 
-	return s.client.Do(req, nil)
+	_, err = s.client.Call(req, nil)
+	return err
 }
 
 // AddComment appends a comment to the issue.
@@ -213,14 +223,15 @@ func (s *Service) AddComment(ctx context.Context, key string, comment any) error
 	}
 
 	body := map[string]any{"body": comment}
-	path := fmt.Sprintf("/issue/%s/comment", url.PathEscape(key))
+	path := apiPath("issue", url.PathEscape(key), "comment")
 
-	req, err := s.client.NewRequest(ctx, "POST", path, nil, body)
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, "", body)
 	if err != nil {
 		return err
 	}
 
-	return s.client.Do(req, nil)
+	_, err = s.client.Call(req, nil)
+	return err
 }
 
 // ListTransitions retrieves available workflow transitions for an issue.
@@ -229,8 +240,15 @@ func (s *Service) ListTransitions(ctx context.Context, key string) ([]Transition
 		return nil, fmt.Errorf("jira: issue key required")
 	}
 
-	path := fmt.Sprintf("/issue/%s/transitions", url.PathEscape(key))
-	req, err := s.client.NewRequest(ctx, http.MethodGet, path, map[string]string{"expand": "transitions.fields"}, nil)
+	params := url.Values{}
+	params.Set("expand", "transitions.fields")
+
+	path := apiPath("issue", url.PathEscape(key), "transitions")
+	if encoded := params.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+
+	req, err := s.client.NewRequest(ctx, http.MethodGet, path, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +257,7 @@ func (s *Service) ListTransitions(ctx context.Context, key string) ([]Transition
 		Transitions []Transition `json:"transitions"`
 	}
 
-	if err := s.client.Do(req, &out); err != nil {
+	if _, err := s.client.Call(req, &out); err != nil {
 		return nil, err
 	}
 
@@ -262,13 +280,14 @@ func (s *Service) TransitionIssue(ctx context.Context, key, transitionID string,
 		body["fields"] = fields
 	}
 
-	path := fmt.Sprintf("/issue/%s/transitions", url.PathEscape(key))
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil, body)
+	path := apiPath("issue", url.PathEscape(key), "transitions")
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, "", body)
 	if err != nil {
 		return err
 	}
 
-	return s.client.Do(req, nil)
+	_, err = s.client.Call(req, nil)
+	return err
 }
 
 // AddAttachment uploads a file attachment to the specified issue.
@@ -296,15 +315,26 @@ func (s *Service) AddAttachment(ctx context.Context, key, filename string, data 
 		return fmt.Errorf("jira: close attachment writer: %w", err)
 	}
 
-	path := fmt.Sprintf("/issue/%s/attachments", url.PathEscape(key))
-	req, err := s.client.NewRequest(ctx, http.MethodPost, path, nil, atlassian.RawBody{
-		Reader:      buf,
-		ContentType: writer.FormDataContentType(),
-	})
+	path := apiPath("issue", url.PathEscape(key), "attachments")
+	req, err := s.client.NewRequest(ctx, http.MethodPost, path, writer.FormDataContentType(), buf)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("X-Atlassian-Token", "nocheck")
 
-	return s.client.Do(req, nil)
+	_, err = s.client.Call(req, nil)
+	return err
+}
+
+func apiPath(parts ...string) string {
+	builder := strings.Builder{}
+	builder.WriteString(strings.TrimRight(apiPrefix, "/"))
+
+	for _, part := range parts {
+		if trimmed := strings.Trim(part, "/"); trimmed != "" {
+			builder.WriteByte('/')
+			builder.WriteString(trimmed)
+		}
+	}
+
+	return builder.String()
 }

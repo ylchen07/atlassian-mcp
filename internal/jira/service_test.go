@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
-	"github.com/ylchen07/atlassian-mcp/internal/auth"
+	jirav2 "github.com/ctreminiom/go-atlassian/v2/jira/v2"
+
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
@@ -21,14 +21,17 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func newTestClient(t *testing.T, fn roundTripFunc) *atlassian.Client {
+func newTestClient(t *testing.T, fn roundTripFunc) *jirav2.Client {
 	t.Helper()
 	creds := config.ServiceCredentials{Email: "user", APIToken: "token"}
-	client, err := atlassian.NewClient("https://example.atlassian.net", creds, nil)
+	client, err := NewV2Client(
+		"https://example.atlassian.net",
+		creds,
+		WithV2HTTPClient(&http.Client{Transport: roundTripFunc(fn)}),
+	)
 	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
+		t.Fatalf("NewV2Client error: %v", err)
 	}
-	client.SetTransport(auth.NewTransport(fn, creds))
 	return client
 }
 
@@ -49,7 +52,7 @@ func TestServiceListProjects(t *testing.T) {
 	t.Parallel()
 
 	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path != "/project/search" {
+		if r.URL.Path != "/rest/api/2/project/search" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		if r.URL.Query().Get("maxResults") != "5" {
@@ -58,9 +61,11 @@ func TestServiceListProjects(t *testing.T) {
 		if got := r.Header.Get("Authorization"); got == "" {
 			t.Fatalf("expected auth header")
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"values": []map[string]string{{"id": "1", "key": "PRJ", "name": "Project"}},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -80,7 +85,7 @@ func TestServiceSearchIssues(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/search" {
+		if r.URL.Path != "/rest/api/2/search" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		var body map[string]any
@@ -90,7 +95,7 @@ func TestServiceSearchIssues(t *testing.T) {
 		if body["jql"] != "project = PRJ" {
 			t.Fatalf("unexpected JQL %#v", body["jql"])
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"total":      1,
 			"startAt":    0,
 			"maxResults": 50,
@@ -104,7 +109,9 @@ func TestServiceSearchIssues(t *testing.T) {
 					"assignee":    map[string]any{"displayName": "User"},
 				},
 			}},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -127,13 +134,13 @@ func TestServiceListTransitions(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Fatalf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/issue/PRJ-1/transitions" {
+		if r.URL.Path != "/rest/api/2/issue/PRJ-1/transitions" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		if r.URL.Query().Get("expand") != "transitions.fields" {
 			t.Fatalf("missing expand param")
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"transitions": []map[string]any{{
 				"id":   "1",
 				"name": "Done",
@@ -142,7 +149,9 @@ func TestServiceListTransitions(t *testing.T) {
 					"name": "Done",
 				},
 			}},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -162,7 +171,7 @@ func TestServiceTransitionIssue(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/issue/PRJ-1/transitions" {
+		if r.URL.Path != "/rest/api/2/issue/PRJ-1/transitions" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		var body map[string]any
@@ -173,7 +182,9 @@ func TestServiceTransitionIssue(t *testing.T) {
 		if transition["id"] != "2" {
 			t.Fatalf("unexpected transition %#v", transition)
 		}
-		return jsonResponse(t, http.StatusNoContent, nil), nil
+		resp := jsonResponse(t, http.StatusNoContent, nil)
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -189,11 +200,11 @@ func TestServiceAddAttachment(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/issue/PRJ-1/attachments" {
+		if r.URL.Path != "/rest/api/2/issue/PRJ-1/attachments" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		if r.Header.Get("X-Atlassian-Token") != "nocheck" {
-			t.Fatalf("missing nocheck header")
+		if r.Header.Get("X-Atlassian-Token") != "no-check" {
+			t.Fatalf("missing no-check header")
 		}
 		ct := r.Header.Get("Content-Type")
 		if !strings.HasPrefix(ct, "multipart/form-data") {
@@ -223,7 +234,9 @@ func TestServiceAddAttachment(t *testing.T) {
 		if string(content) != "hello" {
 			t.Fatalf("unexpected data %s", string(content))
 		}
-		return jsonResponse(t, http.StatusCreated, map[string]any{"id": "att-1"}), nil
+		resp := jsonResponse(t, http.StatusCreated, map[string]any{"id": "att-1"})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)

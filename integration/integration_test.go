@@ -33,13 +33,13 @@ func TestJiraListProjectsIntegration(t *testing.T) {
 	}
 
 	apiBase := ensureHTTPS(os.Getenv("ATLASSIAN_JIRA_API_BASE"))
-	if apiBase == "" {
-		apiBase = fmt.Sprintf("%s/rest/api/3", jiraSite)
+	if apiBase != "" {
+		jiraSite = trimRESTSuffix(apiBase)
 	}
 
-	client, err := atlassian.NewClient(apiBase, creds, nil)
+	client, err := jira.NewV2Client(jiraSite, creds)
 	if err != nil {
-		t.Fatalf("NewClient: %v", err)
+		t.Fatalf("NewV2Client: %v", err)
 	}
 
 	svc := jira.NewService(client)
@@ -131,4 +131,14 @@ func credsValid(creds config.ServiceCredentials) bool {
 		return true
 	}
 	return creds.Email != "" && creds.APIToken != ""
+}
+
+func trimRESTSuffix(apiBase string) string {
+	trimmed := strings.TrimRight(apiBase, "/")
+	for _, suffix := range []string{"/rest/api/3", "/rest/api/2"} {
+		if strings.HasSuffix(trimmed, suffix) {
+			return strings.TrimRight(strings.TrimSuffix(trimmed, suffix), "/")
+		}
+	}
+	return trimmed
 }

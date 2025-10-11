@@ -49,9 +49,8 @@ func run(path string) error {
 	logger := logging.New(cfg.Server.LogLevel)
 
 	jiraSite := ensureHTTPS(cfg.Atlassian.Jira.Site)
-	jiraAPI := buildJiraAPIBase(jiraSite)
 	if apiOverride := ensureHTTPS(cfg.Atlassian.Jira.APIBase); apiOverride != "" {
-		jiraAPI = strings.TrimRight(apiOverride, "/")
+		jiraSite = trimRESTSuffix(apiOverride)
 	}
 
 	confluenceSite := ensureHTTPS(cfg.Atlassian.Confluence.Site)
@@ -60,7 +59,7 @@ func run(path string) error {
 		confluenceAPI = strings.TrimRight(apiOverride, "/")
 	}
 
-	jiraClient, err := atlassianclient.NewClient(jiraAPI, cfg.Atlassian.Jira.ServiceCredentials, logger)
+	jiraClient, err := jira.NewV2Client(jiraSite, cfg.Atlassian.Jira.ServiceCredentials)
 	if err != nil {
 		logger.Error("failed to initialize Jira client", slog.Any("error", err))
 		return fmt.Errorf("initialize jira client: %w", err)
@@ -94,6 +93,16 @@ func run(path string) error {
 	return nil
 }
 
+func trimRESTSuffix(apiBase string) string {
+	trimmed := strings.TrimRight(apiBase, "/")
+	for _, suffix := range []string{"/rest/api/3", "/rest/api/2"} {
+		if strings.HasSuffix(trimmed, suffix) {
+			return strings.TrimRight(strings.TrimSuffix(trimmed, suffix), "/")
+		}
+	}
+	return trimmed
+}
+
 func ensureHTTPS(site string) string {
 	trimmed := strings.TrimSpace(site)
 	if trimmed == "" {
@@ -105,17 +114,6 @@ func ensureHTTPS(site string) string {
 	}
 
 	return "https://" + strings.TrimRight(trimmed, "/")
-}
-
-func buildJiraAPIBase(site string) string {
-	trimmed := strings.TrimRight(site, "/")
-	if trimmed == "" {
-		return ""
-	}
-	if strings.HasSuffix(trimmed, "/rest/api/3") {
-		return trimmed
-	}
-	return trimmed + "/rest/api/3"
 }
 
 func buildConfluenceAPIBase(site string) string {
