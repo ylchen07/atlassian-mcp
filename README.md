@@ -9,6 +9,27 @@ The Atlassian MCP server is a Go implementation of the Model Context Protocol. I
 - Configuration by file or environment variables with `.env` support for local development.
 - Make-based developer workflow for dependency tidying, linting, testing, and building a standalone stdio binary.
 
+## Package Relationships
+
+```mermaid
+graph TD
+  cmd["cmd/server"] --> cfg["internal/config"]
+  cmd --> log["pkg/logging"]
+  cmd --> jira["internal/jira"]
+  cmd --> conf["internal/confluence"]
+  cmd --> mcp["internal/mcp"]
+  cmd --> state["internal/state"]
+  cmd --> auth["internal/auth"]
+
+  mcp --> jira
+  mcp --> conf
+  mcp --> state
+
+  jira --> auth
+  jira --> goatl["github.com/ctreminiom/go-atlassian/v2"]
+  conf --> auth
+```
+
 ### Jira tools
 
 | Tool ID | Description |
