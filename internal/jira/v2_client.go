@@ -3,6 +3,7 @@ package jira
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -38,16 +39,16 @@ func WithV2HTTPClient(httpClient *http.Client) V2ClientOption {
 // Authentication is derived from the provided credentials using OAuth bearer tokens
 // when available, or falling back to basic auth (email/API token).
 func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientOption) (*jirav2.Client, error) {
-	trimmedSite := strings.TrimSpace(site)
-	if trimmedSite == "" {
-		return nil, fmt.Errorf("jira: site is required to construct v2 client")
+	base, err := normalizeSite(site)
+	if err != nil {
+		return nil, err
 	}
 
 	defaultHTTPClient := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
-	client, err := jirav2.New(defaultHTTPClient, trimmedSite)
+	client, err := jirav2.New(defaultHTTPClient, base)
 	if err != nil {
 		return nil, fmt.Errorf("jira: initialise v2 client: %w", err)
 	}
@@ -68,4 +69,31 @@ func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientO
 	}
 
 	return client, nil
+}
+
+func normalizeSite(site string) (string, error) {
+	trimmed := strings.TrimSpace(site)
+	if trimmed == "" {
+		return "", fmt.Errorf("jira: site is required to construct v2 client")
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("jira: parse site: %w", err)
+	}
+
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	for _, suffix := range []string{"/rest/api/3", "/rest/api/2"} {
+		if strings.HasSuffix(parsed.Path, suffix) {
+			parsed.Path = strings.TrimSuffix(parsed.Path, suffix)
+			parsed.Path = strings.TrimRight(parsed.Path, "/")
+			break
+		}
+	}
+
+	if parsed.Path != "" && !strings.HasSuffix(parsed.Path, "/") {
+		parsed.Path += "/"
+	}
+
+	return parsed.String(), nil
 }

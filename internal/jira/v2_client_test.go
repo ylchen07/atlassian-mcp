@@ -22,7 +22,7 @@ func TestNewV2ClientRequiresSite(t *testing.T) {
 func TestNewV2ClientBasicAuth(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewV2Client("https://example.atlassian.net", config.ServiceCredentials{
+	client, err := NewV2Client("https://example.atlassian.net/rest/api/3", config.ServiceCredentials{
 		Email:    "user@example.com",
 		APIToken: "secret",
 	})
@@ -45,6 +45,10 @@ func TestNewV2ClientBasicAuth(t *testing.T) {
 
 	if agent := client.Auth.GetUserAgent(); agent != "atlassian-mcp" {
 		t.Fatalf("expected default user agent, got %s", agent)
+	}
+
+	if site := strings.TrimRight(client.Site.String(), "/"); site != "https://example.atlassian.net" {
+		t.Fatalf("expected site trimmed to base, got %s", site)
 	}
 }
 
@@ -89,5 +93,18 @@ func TestNewV2ClientOptions(t *testing.T) {
 
 	if agent := client.Auth.GetUserAgent(); agent != "custom-agent" {
 		t.Fatalf("expected custom user agent, got %s", agent)
+	}
+}
+
+func TestNormalizeSiteFromAPIBase(t *testing.T) {
+	t.Parallel()
+
+	input := "https://example.atlassian.net/rest/api/2"
+	out, err := normalizeSite(input)
+	if err != nil {
+		t.Fatalf("normalizeSite unexpected error: %v", err)
+	}
+	if out != "https://example.atlassian.net" {
+		t.Fatalf("expected trimmed site, got %s", out)
 	}
 }
