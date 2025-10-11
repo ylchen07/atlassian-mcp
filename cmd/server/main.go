@@ -7,7 +7,6 @@ import (
 
 	"log/slog"
 
-	atlassianclient "github.com/ylchen07/atlassian-mcp/internal/atlassian"
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 	"github.com/ylchen07/atlassian-mcp/internal/confluence"
 	"github.com/ylchen07/atlassian-mcp/internal/jira"
@@ -54,9 +53,8 @@ func run(path string) error {
 	}
 
 	confluenceSite := ensureHTTPS(cfg.Atlassian.Confluence.Site)
-	confluenceAPI := buildConfluenceAPIBase(confluenceSite)
 	if apiOverride := ensureHTTPS(cfg.Atlassian.Confluence.APIBase); apiOverride != "" {
-		confluenceAPI = strings.TrimRight(apiOverride, "/")
+		confluenceSite = apiOverride
 	}
 
 	jiraClient, err := jira.NewV2Client(jiraSite, cfg.Atlassian.Jira.ServiceCredentials)
@@ -66,11 +64,12 @@ func run(path string) error {
 	}
 	jiraSite = strings.TrimRight(jiraClient.Site.String(), "/")
 
-	confluenceClient, err := atlassianclient.NewClient(confluenceAPI, cfg.Atlassian.Confluence.ServiceCredentials, logger)
+	confluenceClient, err := confluence.NewClient(confluenceSite, cfg.Atlassian.Confluence.ServiceCredentials)
 	if err != nil {
 		logger.Error("failed to initialize Confluence client", slog.Any("error", err))
 		return fmt.Errorf("initialize confluence client: %w", err)
 	}
+	confluenceSite = strings.TrimRight(confluenceClient.Site.String(), "/")
 
 	stateCache := state.NewCache()
 
@@ -105,20 +104,6 @@ func ensureHTTPS(site string) string {
 	}
 
 	return "https://" + strings.TrimRight(trimmed, "/")
-}
-
-func buildConfluenceAPIBase(site string) string {
-	trimmed := strings.TrimRight(site, "/")
-	if trimmed == "" {
-		return ""
-	}
-	if strings.Contains(trimmed, "/rest/") {
-		return trimmed
-	}
-	if strings.HasSuffix(trimmed, "/wiki") {
-		return trimmed + "/rest/api"
-	}
-	return trimmed + "/wiki/rest/api"
 }
 
 func buildConfluenceUIBase(site string) string {

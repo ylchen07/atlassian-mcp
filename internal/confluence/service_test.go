@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
 
-	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
-	"github.com/ylchen07/atlassian-mcp/internal/auth"
+	cf "github.com/ctreminiom/go-atlassian/v2/confluence"
+
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
@@ -20,14 +19,17 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func newTestClient(t *testing.T, fn roundTripFunc) *atlassian.Client {
+func newTestClient(t *testing.T, fn roundTripFunc) *cf.Client {
 	t.Helper()
 	creds := config.ServiceCredentials{Email: "user", APIToken: "token"}
-	client, err := atlassian.NewClient("https://example.atlassian.net/wiki/rest/api", creds, nil)
+	client, err := NewClient(
+		"https://example.atlassian.net/wiki/rest/api",
+		creds,
+		WithHTTPClient(&http.Client{Transport: roundTripFunc(fn)}),
+	)
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
-	client.SetTransport(auth.NewTransport(fn, creds))
 	return client
 }
 
@@ -48,22 +50,27 @@ func TestServiceListSpaces(t *testing.T) {
 	t.Parallel()
 
 	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
-		if !strings.HasSuffix(r.URL.Path, "/space") {
+		if r.URL.Path != "/wiki/rest/api/space" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		if r.URL.Query().Get("limit") != "2" {
 			t.Fatalf("expected limit=2, got %s", r.URL.Query().Get("limit"))
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		if r.URL.Query().Get("expand") != "description.plain" {
+			t.Fatalf("expected expand=description.plain, got %s", r.URL.Query().Get("expand"))
+		}
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"results": []map[string]any{{
-				"id":   "1",
+				"id":   1,
 				"key":  "SPACE",
 				"name": "Space",
 				"description": map[string]any{
 					"plain": map[string]any{"value": "desc"},
 				},
 			}},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -80,13 +87,13 @@ func TestServiceSearchContent(t *testing.T) {
 	t.Parallel()
 
 	client := newTestClient(t, func(r *http.Request) (*http.Response, error) {
-		if !strings.HasSuffix(r.URL.Path, "/content/search") {
+		if r.URL.Path != "/wiki/rest/api/content/search" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		if r.URL.Query().Get("cql") != "type=page" {
 			t.Fatalf("unexpected CQL %s", r.URL.Query().Get("cql"))
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"results": []map[string]any{{
 				"id":     "1",
 				"title":  "Page",
@@ -96,7 +103,9 @@ func TestServiceSearchContent(t *testing.T) {
 					"number": 2,
 				},
 			}},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -116,17 +125,22 @@ func TestServiceCreatePage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
+		if r.URL.Path != "/wiki/rest/api/content" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
 		var body map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decode body: %v", err)
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"id":    "1",
 			"title": body["title"],
 			"version": map[string]any{
 				"number": 1,
 			},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)
@@ -146,7 +160,7 @@ func TestServiceUpdatePage(t *testing.T) {
 		if r.Method != http.MethodPut {
 			t.Fatalf("expected PUT, got %s", r.Method)
 		}
-		if !strings.HasSuffix(r.URL.Path, "/content/1") {
+		if r.URL.Path != "/wiki/rest/api/content/1" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		var body map[string]any
@@ -157,13 +171,15 @@ func TestServiceUpdatePage(t *testing.T) {
 		if version["number"].(float64) != 2 {
 			t.Fatalf("expected version 2, got %v", version["number"])
 		}
-		return jsonResponse(t, http.StatusOK, map[string]any{
+		resp := jsonResponse(t, http.StatusOK, map[string]any{
 			"id":    "1",
 			"title": body["title"],
 			"version": map[string]any{
 				"number": 2,
 			},
-		}), nil
+		})
+		resp.Request = r
+		return resp, nil
 	})
 
 	svc := NewService(client)

@@ -4,7 +4,7 @@ The Atlassian MCP server is a Go implementation of the Model Context Protocol. I
 
 ## Capabilities
 
-- Idiomatic Jira and Confluence clients with shared authentication, caching, and structured error reporting.
+- Idiomatic Jira and Confluence clients powered by the go-atlassian v2 SDK with shared authentication, caching, and structured error reporting.
 - Ready-to-use MCP tools for common Jira and Confluence tasks (projects, issues, pages, search, transitions, attachments, and comments).
 - Configuration by file or environment variables with `.env` support for local development.
 - Make-based developer workflow for dependency tidying, linting, testing, and building a standalone stdio binary.
@@ -19,15 +19,13 @@ graph TD
   cmd --> conf["internal/confluence"]
   cmd --> mcp["internal/mcp"]
   cmd --> state["internal/state"]
-  cmd --> auth["internal/auth"]
 
   mcp --> jira
   mcp --> conf
   mcp --> state
 
-  jira --> auth
   jira --> goatl["github.com/ctreminiom/go-atlassian/v2"]
-  conf --> auth
+  conf --> cfgoatl["github.com/ctreminiom/go-atlassian/v2"]
 ```
 
 ### Jira tools

@@ -3,18 +3,19 @@ package confluence
 import (
 	"context"
 	"fmt"
-	"net/url"
+	"strconv"
 
-	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
+	cf "github.com/ctreminiom/go-atlassian/v2/confluence"
+	"github.com/ctreminiom/go-atlassian/v2/pkg/infra/models"
 )
 
 // Service exposes Confluence REST endpoints used by the MCP server.
 type Service struct {
-	client *atlassian.Client
+	client *cf.Client
 }
 
 // NewService constructs a Confluence service.
-func NewService(client *atlassian.Client) *Service {
+func NewService(client *cf.Client) *Service {
 	return &Service{client: client}
 }
 
@@ -49,24 +50,41 @@ type Content struct {
 
 // ListSpaces retrieves Confluence spaces.
 func (s *Service) ListSpaces(ctx context.Context, limit int) ([]Space, error) {
-	query := map[string]string{
-		"limit": fmt.Sprintf("%d", limit),
+	if limit <= 0 {
+		limit = 25
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", "/space", query, nil)
+	options := &models.GetSpacesOptionScheme{
+		Expand: []string{"description.plain"},
+	}
+
+	page, _, err := s.client.Space.Gets(ctx, options, 0, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	var res struct {
-		Results []Space `json:"results"`
+	out := make([]Space, 0, len(page.Results))
+	for _, space := range page.Results {
+		if space == nil {
+			continue
+		}
+		out = append(out, Space{
+			ID:   strconv.Itoa(space.ID),
+			Key:  space.Key,
+			Name: space.Name,
+			Description: struct {
+				Plain struct {
+					Value string `json:"value"`
+				} `json:"plain"`
+			}{
+				Plain: struct {
+					Value string `json:"value"`
+				}{Value: ""},
+			},
+		})
 	}
 
-	if err := s.client.Do(req, &res); err != nil {
-		return nil, err
-	}
-
-	return res.Results, nil
+	return out, nil
 }
 
 // SearchContent performs a CQL search across content.
@@ -75,26 +93,37 @@ func (s *Service) SearchContent(ctx context.Context, cql string, limit int) ([]C
 		return nil, fmt.Errorf("confluence: cql required")
 	}
 
-	query := map[string]string{
-		"cql":    cql,
-		"limit":  fmt.Sprintf("%d", limit),
-		"expand": "body.storage,version",
+	if limit <= 0 {
+		limit = 25
 	}
 
-	req, err := s.client.NewRequest(ctx, "GET", "/content/search", query, nil)
+	page, _, err := s.client.Content.Search(ctx, cql, "", []string{"body.storage", "version"}, "", limit)
 	if err != nil {
 		return nil, err
 	}
 
-	var res struct {
-		Results []Content `json:"results"`
+	results := make([]Content, 0, len(page.Results))
+	for _, item := range page.Results {
+		if item == nil {
+			continue
+		}
+		content := Content{
+			ID:     item.ID,
+			Type:   item.Type,
+			Status: item.Status,
+			Title:  item.Title,
+		}
+		if item.Version != nil {
+			content.Version.Number = item.Version.Number
+		}
+		if item.Body != nil && item.Body.Storage != nil {
+			content.Body.Storage.Value = item.Body.Storage.Value
+			content.Body.Storage.Representation = item.Body.Storage.Representation
+		}
+		results = append(results, content)
 	}
 
-	if err := s.client.Do(req, &res); err != nil {
-		return nil, err
-	}
-
-	return res.Results, nil
+	return results, nil
 }
 
 // PageInput describes a page create/update request.
@@ -118,33 +147,28 @@ func (s *Service) CreatePage(ctx context.Context, in PageInput) (*Content, error
 		return nil, fmt.Errorf("confluence: body required")
 	}
 
-	body := map[string]any{
-		"type":  "page",
-		"title": in.Title,
-		"space": map[string]string{"key": in.SpaceKey},
-		"body": map[string]any{
-			"storage": map[string]string{
-				"value":          in.Body,
-				"representation": "storage",
+	payload := &models.ContentScheme{
+		Type:  "page",
+		Title: in.Title,
+		Space: &models.SpaceScheme{Key: in.SpaceKey},
+		Body: &models.BodyScheme{
+			Storage: &models.BodyNodeScheme{
+				Value:          in.Body,
+				Representation: "storage",
 			},
 		},
 	}
 
 	if in.ParentID != "" {
-		body["ancestors"] = []map[string]string{{"id": in.ParentID}}
+		payload.Ancestors = []*models.ContentScheme{{ID: in.ParentID}}
 	}
 
-	req, err := s.client.NewRequest(ctx, "POST", "/content", nil, body)
+	created, _, err := s.client.Content.Create(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	var out Content
-	if err := s.client.Do(req, &out); err != nil {
-		return nil, err
-	}
-
-	return &out, nil
+	return toContent(created), nil
 }
 
 // UpdatePage updates an existing Confluence page.
@@ -162,40 +186,62 @@ func (s *Service) UpdatePage(ctx context.Context, id string, in PageInput) (*Con
 		return nil, fmt.Errorf("confluence: version required")
 	}
 
-	body := map[string]any{
-		"id":    id,
-		"type":  "page",
-		"title": in.Title,
-		"version": map[string]any{
-			"number": in.Version,
-		},
-		"body": map[string]any{
-			"storage": map[string]string{
-				"value":          in.Body,
-				"representation": "storage",
+	payload := &models.ContentScheme{
+		Type:  "page",
+		Title: in.Title,
+		Body: &models.BodyScheme{
+			Storage: &models.BodyNodeScheme{
+				Value:          in.Body,
+				Representation: "storage",
 			},
 		},
+		Version: &models.ContentVersionScheme{Number: in.Version},
 	}
 
 	if in.SpaceKey != "" {
-		body["space"] = map[string]string{"key": in.SpaceKey}
+		payload.Space = &models.SpaceScheme{Key: in.SpaceKey}
 	}
 
 	if in.ParentID != "" {
-		body["ancestors"] = []map[string]string{{"id": in.ParentID}}
+		payload.Ancestors = []*models.ContentScheme{{ID: in.ParentID}}
 	}
 
-	path := fmt.Sprintf("/content/%s", url.PathEscape(id))
-
-	req, err := s.client.NewRequest(ctx, "PUT", path, nil, body)
+	updated, _, err := s.client.Content.Update(ctx, id, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	var out Content
-	if err := s.client.Do(req, &out); err != nil {
-		return nil, err
+	return toContent(updated), nil
+}
+
+func toContent(in *models.ContentScheme) *Content {
+	if in == nil {
+		return nil
 	}
 
-	return &out, nil
+	var number int
+	if in.Version != nil {
+		number = in.Version.Number
+	}
+
+	var value, representation string
+	if in.Body != nil && in.Body.Storage != nil {
+		value = in.Body.Storage.Value
+		representation = in.Body.Storage.Representation
+	}
+
+	out := &Content{
+		ID:     in.ID,
+		Type:   in.Type,
+		Status: in.Status,
+		Title:  in.Title,
+		Version: struct {
+			Number int `json:"number"`
+		}{Number: number},
+	}
+
+	out.Body.Storage.Value = value
+	out.Body.Storage.Representation = representation
+
+	return out
 }

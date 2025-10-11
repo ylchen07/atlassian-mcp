@@ -5,12 +5,10 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 	"github.com/ylchen07/atlassian-mcp/internal/confluence"
 	"github.com/ylchen07/atlassian-mcp/internal/jira"
@@ -73,14 +71,15 @@ func TestConfluenceListSpacesIntegration(t *testing.T) {
 	}
 
 	apiBase := ensureHTTPS(os.Getenv("ATLASSIAN_CONFLUENCE_API_BASE"))
-	if apiBase == "" {
-		apiBase = fmt.Sprintf("%s/wiki/rest/api", confluenceSite)
+	if apiBase != "" {
+		confluenceSite = apiBase
 	}
 
-	client, err := atlassian.NewClient(apiBase, creds, nil)
+	client, err := confluence.NewClient(confluenceSite, creds)
 	if err != nil {
-		t.Fatalf("NewClient: %v", err)
+		t.Fatalf("NewV2Client: %v", err)
 	}
+	confluenceSite = strings.TrimRight(client.Site.String(), "/")
 
 	svc := confluence.NewService(client)
 	spaces, err := svc.ListSpaces(context.Background(), 5)
