@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	jirav2 "github.com/ctreminiom/go-atlassian/v2/jira/v2"
+	jiraapi "github.com/ctreminiom/go-atlassian/v2/jira/v2"
 
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
@@ -21,16 +21,16 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func newTestClient(t *testing.T, fn roundTripFunc) *jirav2.Client {
+func newTestClient(t *testing.T, fn roundTripFunc) *jiraapi.Client {
 	t.Helper()
 	creds := config.ServiceCredentials{Email: "user", APIToken: "token"}
-	client, err := NewV2Client(
+	client, err := NewClient(
 		"https://example.atlassian.net",
 		creds,
-		WithV2HTTPClient(&http.Client{Transport: roundTripFunc(fn)}),
+		WithHTTPClient(&http.Client{Transport: roundTripFunc(fn)}),
 	)
 	if err != nil {
-		t.Fatalf("NewV2Client error: %v", err)
+		t.Fatalf("NewClient error: %v", err)
 	}
 	return client
 }

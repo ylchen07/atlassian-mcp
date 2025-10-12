@@ -7,38 +7,38 @@ import (
 	"strings"
 	"time"
 
-	jirav2 "github.com/ctreminiom/go-atlassian/v2/jira/v2"
+	jiraapi "github.com/ctreminiom/go-atlassian/v2/jira/v2"
 
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
-// V2ClientOption allows callers to customise construction of the Jira v2 SDK client.
-type V2ClientOption func(*jirav2.Client)
+// ClientOption allows callers to customise construction of the Jira SDK client.
+type ClientOption func(*jiraapi.Client)
 
-// WithV2UserAgent sets a custom user agent on the Jira v2 client.
-func WithV2UserAgent(agent string) V2ClientOption {
-	return func(client *jirav2.Client) {
+// WithUserAgent sets a custom user agent on the Jira client.
+func WithUserAgent(agent string) ClientOption {
+	return func(client *jiraapi.Client) {
 		if strings.TrimSpace(agent) != "" {
 			client.Auth.SetUserAgent(agent)
 		}
 	}
 }
 
-// WithV2HTTPClient overrides the HTTP client used by the Jira v2 SDK.
+// WithHTTPClient overrides the HTTP client used by the Jira SDK.
 // Note: The SDK stores the http.Client by reference, so customise transport/timeouts before passing it in.
-func WithV2HTTPClient(httpClient *http.Client) V2ClientOption {
-	return func(client *jirav2.Client) {
+func WithHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *jiraapi.Client) {
 		if httpClient != nil {
 			client.HTTP = httpClient
 		}
 	}
 }
 
-// NewV2Client creates a Jira REST API v2 client backed by the go-atlassian SDK.
+// NewClient creates a Jira REST API client backed by the go-atlassian SDK.
 // The site must be the Atlassian base URL (e.g. https://<tenant>.atlassian.net).
 // Authentication is derived from the provided credentials using OAuth bearer tokens
 // when available, or falling back to basic auth (email/API token).
-func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientOption) (*jirav2.Client, error) {
+func NewClient(site string, creds config.ServiceCredentials, opts ...ClientOption) (*jiraapi.Client, error) {
 	base, err := normalizeSite(site)
 	if err != nil {
 		return nil, err
@@ -48,9 +48,9 @@ func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientO
 		Timeout: 30 * time.Second,
 	}
 
-	client, err := jirav2.New(defaultHTTPClient, base)
+	client, err := jiraapi.New(defaultHTTPClient, base)
 	if err != nil {
-		return nil, fmt.Errorf("jira: initialise v2 client: %w", err)
+		return nil, fmt.Errorf("jira: initialise client: %w", err)
 	}
 
 	client.Auth.SetUserAgent("atlassian-mcp")
@@ -65,7 +65,7 @@ func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientO
 	case strings.TrimSpace(creds.Email) != "" && strings.TrimSpace(creds.APIToken) != "":
 		client.Auth.SetBasicAuth(creds.Email, creds.APIToken)
 	default:
-		return nil, fmt.Errorf("jira: insufficient credentials for v2 client")
+		return nil, fmt.Errorf("jira: insufficient credentials for client")
 	}
 
 	return client, nil
@@ -74,7 +74,7 @@ func NewV2Client(site string, creds config.ServiceCredentials, opts ...V2ClientO
 func normalizeSite(site string) (string, error) {
 	trimmed := strings.TrimSpace(site)
 	if trimmed == "" {
-		return "", fmt.Errorf("jira: site is required to construct v2 client")
+		return "", fmt.Errorf("jira: site is required to construct client")
 	}
 
 	parsed, err := url.Parse(trimmed)
