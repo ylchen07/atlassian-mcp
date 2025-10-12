@@ -35,9 +35,9 @@ func TestJiraListProjectsIntegration(t *testing.T) {
 		jiraSite = apiBase
 	}
 
-	client, err := jira.NewV2Client(jiraSite, creds)
+	client, err := jira.NewClient(jiraSite, creds)
 	if err != nil {
-		t.Fatalf("NewV2Client: %v", err)
+		t.Fatalf("NewClient: %v", err)
 	}
 	jiraSite = strings.TrimRight(client.Site.String(), "/")
 
@@ -77,7 +77,7 @@ func TestConfluenceListSpacesIntegration(t *testing.T) {
 
 	client, err := confluence.NewClient(confluenceSite, creds)
 	if err != nil {
-		t.Fatalf("NewV2Client: %v", err)
+		t.Fatalf("NewClient: %v", err)
 	}
 	confluenceSite = strings.TrimRight(client.Site.String(), "/")
 

@@ -10,24 +10,24 @@ import (
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
-func TestNewV2ClientRequiresSite(t *testing.T) {
+func TestNewClientRequiresSite(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewV2Client("  ", config.ServiceCredentials{Email: "user", APIToken: "token"})
+	_, err := NewClient("  ", config.ServiceCredentials{Email: "user", APIToken: "token"})
 	if err == nil || !strings.Contains(err.Error(), "site") {
 		t.Fatalf("expected site validation error, got %v", err)
 	}
 }
 
-func TestNewV2ClientBasicAuth(t *testing.T) {
+func TestNewClientBasicAuth(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewV2Client("https://example.atlassian.net/rest/api/3", config.ServiceCredentials{
+	client, err := NewClient("https://example.atlassian.net/rest/api/3", config.ServiceCredentials{
 		Email:    "user@example.com",
 		APIToken: "secret",
 	})
 	if err != nil {
-		t.Fatalf("NewV2Client error: %v", err)
+		t.Fatalf("NewClient error: %v", err)
 	}
 
 	if !client.Auth.HasBasicAuth() {
@@ -52,14 +52,14 @@ func TestNewV2ClientBasicAuth(t *testing.T) {
 	}
 }
 
-func TestNewV2ClientOAuthToken(t *testing.T) {
+func TestNewClientOAuthToken(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewV2Client("https://example.atlassian.net", config.ServiceCredentials{
+	client, err := NewClient("https://example.atlassian.net", config.ServiceCredentials{
 		OAuthToken: "bearer-token",
 	})
 	if err != nil {
-		t.Fatalf("NewV2Client error: %v", err)
+		t.Fatalf("NewClient error: %v", err)
 	}
 
 	if client.Auth.GetBearerToken() != "bearer-token" {
@@ -71,19 +71,19 @@ func TestNewV2ClientOAuthToken(t *testing.T) {
 	}
 }
 
-func TestNewV2ClientOptions(t *testing.T) {
+func TestNewClientOptions(t *testing.T) {
 	t.Parallel()
 
 	customHTTP := &http.Client{Timeout: 5 * time.Second}
 
-	client, err := NewV2Client(
+	client, err := NewClient(
 		"https://example.atlassian.net",
 		config.ServiceCredentials{Email: "user", APIToken: "token"},
-		WithV2HTTPClient(customHTTP),
-		WithV2UserAgent("custom-agent"),
+		WithHTTPClient(customHTTP),
+		WithUserAgent("custom-agent"),
 	)
 	if err != nil {
-		t.Fatalf("NewV2Client error: %v", err)
+		t.Fatalf("NewClient error: %v", err)
 	}
 
 	httpClient, ok := client.HTTP.(*http.Client)

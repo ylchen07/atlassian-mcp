@@ -10,18 +10,18 @@ import (
 	"strconv"
 	"strings"
 
-	jirav2 "github.com/ctreminiom/go-atlassian/v2/jira/v2"
+	jiraapi "github.com/ctreminiom/go-atlassian/v2/jira/v2"
 )
 
 const apiPrefix = "/rest/api/2"
 
 // Service exposes Jira REST endpoints used by the MCP server.
 type Service struct {
-	client *jirav2.Client
+	client *jiraapi.Client
 }
 
 // NewService creates a Jira service using the provided go-atlassian client.
-func NewService(client *jirav2.Client) *Service {
+func NewService(client *jiraapi.Client) *Service {
 	return &Service{client: client}
 }
 

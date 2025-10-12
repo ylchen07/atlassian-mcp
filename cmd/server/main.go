@@ -57,7 +57,7 @@ func run(path string) error {
 		confluenceSite = apiOverride
 	}
 
-	jiraClient, err := jira.NewV2Client(jiraSite, cfg.Atlassian.Jira.ServiceCredentials)
+	jiraClient, err := jira.NewClient(jiraSite, cfg.Atlassian.Jira.ServiceCredentials)
 	if err != nil {
 		logger.Error("failed to initialize Jira client", slog.Any("error", err))
 		return fmt.Errorf("initialize jira client: %w", err)
