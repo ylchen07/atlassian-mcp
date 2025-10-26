@@ -30,25 +30,25 @@ graph TD
 
 ### Jira tools
 
-| Tool ID | Description |
-| --- | --- |
-| `jira.list_projects` | Return the accessible Jira projects (cached for the session). |
-| `jira.search_issues` | Run a JQL query and return issue summaries. |
-| `jira.create_issue` | Create a new issue in the specified project. |
-| `jira.update_issue` | Update issue fields with partial payloads. |
-| `jira.add_comment` | Append a comment using Atlassian document format. |
-| `jira.list_transitions` | Retrieve available workflow transitions for an issue. |
-| `jira.transition_issue` | Apply a workflow transition, optionally updating fields. |
-| `jira.add_attachment` | Upload binary attachments to an issue. |
+| Tool ID                 | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| `jira.list_projects`    | Return the accessible Jira projects (cached for the session). |
+| `jira.search_issues`    | Run a JQL query and return issue summaries.                   |
+| `jira.create_issue`     | Create a new issue in the specified project.                  |
+| `jira.update_issue`     | Update issue fields with partial payloads.                    |
+| `jira.add_comment`      | Append a comment using Atlassian document format.             |
+| `jira.list_transitions` | Retrieve available workflow transitions for an issue.         |
+| `jira.transition_issue` | Apply a workflow transition, optionally updating fields.      |
+| `jira.add_attachment`   | Upload binary attachments to an issue.                        |
 
 ### Confluence tools
 
-| Tool ID | Description |
-| --- | --- |
-| `confluence.list_spaces` | List spaces available to the authenticated account. |
-| `confluence.search_pages` | Execute CQL searches and return page summaries. |
-| `confluence.create_page` | Create pages with optional parent relationships. |
-| `confluence.update_page` | Update existing pages with optimistic version control. |
+| Tool ID                   | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| `confluence.list_spaces`  | List spaces available to the authenticated account.    |
+| `confluence.search_pages` | Execute CQL searches and return page summaries.        |
+| `confluence.create_page`  | Create pages with optional parent relationships.       |
+| `confluence.update_page`  | Update existing pages with optimistic version control. |
 
 ## Prerequisites
 
@@ -58,21 +58,29 @@ graph TD
 ## Quick Start
 
 1. Clone the repository and install dependencies:
+
    ```bash
    git clone https://github.com/ylchen07/atlassian-mcp.git
    cd atlassian-mcp
    make deps
    ```
+
 2. Copy the sample configuration and fill in your tenant details:
+
    ```bash
    cp config.example.yaml config.yaml
    ```
+
    Alternatively, copy `.env.example` to `.env` and export credentials there. Environment variables always override file-based values.
+
 3. Build the stdio binary (emits `bin/atlassian-mcp`):
+
    ```bash
    make build
    ```
+
 4. Run the server:
+
    ```bash
    # Uses config.yaml in the repo root by default
    make run
@@ -124,9 +132,11 @@ CGO_ENABLED=0 XDG_CACHE_HOME=$(pwd)/.cache GOLANGCI_LINT_CACHE=$(pwd)/.cache/gol
 
 - Unit tests: `make test` or `go test ./...`.
 - Integration smoke tests (require real credentials):
+
   ```bash
   MCP_INTEGRATION=1 go test -tags=integration ./integration
   ```
+
   These tests respect the same environment variables as the server and will be skipped unless the required credentials are present.
 
 ## CI/CD
