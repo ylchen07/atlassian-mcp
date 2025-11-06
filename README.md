@@ -98,12 +98,14 @@ The server supports flexible configuration through multiple sources with automat
 ### Configuration Methods
 
 **Method 1: YAML Configuration File**
+
 ```bash
 cp config.example.yaml config.yaml
 # Edit config.yaml with your credentials
 ```
 
 **Method 2: Environment Variables (Recommended for secrets)**
+
 ```bash
 export ATLASSIAN_JIRA_SITE=https://your-domain.atlassian.net
 export ATLASSIAN_JIRA_EMAIL=user@example.com
@@ -111,6 +113,7 @@ export ATLASSIAN_JIRA_API_TOKEN=your_token_here
 ```
 
 **Method 3: Hybrid Approach**
+
 - Store non-sensitive values (URLs) in `config.yaml`
 - Use environment variables for sensitive data (tokens)
 - Environment variables **always override** file values
@@ -125,20 +128,20 @@ export ATLASSIAN_JIRA_API_TOKEN=your_token_here
 
 ### Key Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `ATLASSIAN_JIRA_SITE` | Jira base URL | `https://your-domain.atlassian.net` |
-| `ATLASSIAN_JIRA_EMAIL` | Jira user email (for basic auth) | `user@example.com` |
-| `ATLASSIAN_JIRA_API_TOKEN` | Jira API token | `your_token_here` |
-| `ATLASSIAN_JIRA_OAUTH_TOKEN` | OAuth token (alternative to email/token) | `oauth_token_here` |
-| `ATLASSIAN_CONFLUENCE_SITE` | Confluence base URL | `https://your-domain.atlassian.net` |
-| `ATLASSIAN_CONFLUENCE_EMAIL` | Confluence user email | `user@example.com` |
-| `ATLASSIAN_CONFLUENCE_API_TOKEN` | Confluence API token | `your_token_here` |
-| `ATLASSIAN_CONFLUENCE_OAUTH_TOKEN` | OAuth token (alternative) | `oauth_token_here` |
-| `ATLASSIAN_JIRA_API_BASE` | Optional Jira REST API override | `https://jira.example.com/rest/api/3` |
-| `ATLASSIAN_CONFLUENCE_API_BASE` | Optional Confluence REST API override | `https://confluence.example.com/wiki/rest/api` |
-| `ATLASSIAN_SITE` | Legacy shared hostname fallback | `your-domain.atlassian.net` |
-| `SERVER_LOG_LEVEL` | Log verbosity | `debug`, `info`, `warn`, `error` |
+| Variable                           | Description                              | Example                                        |
+| ---------------------------------- | ---------------------------------------- | ---------------------------------------------- |
+| `ATLASSIAN_JIRA_SITE`              | Jira base URL                            | `https://your-domain.atlassian.net`            |
+| `ATLASSIAN_JIRA_EMAIL`             | Jira user email (for basic auth)         | `user@example.com`                             |
+| `ATLASSIAN_JIRA_API_TOKEN`         | Jira API token                           | `your_token_here`                              |
+| `ATLASSIAN_JIRA_OAUTH_TOKEN`       | OAuth token (alternative to email/token) | `oauth_token_here`                             |
+| `ATLASSIAN_CONFLUENCE_SITE`        | Confluence base URL                      | `https://your-domain.atlassian.net`            |
+| `ATLASSIAN_CONFLUENCE_EMAIL`       | Confluence user email                    | `user@example.com`                             |
+| `ATLASSIAN_CONFLUENCE_API_TOKEN`   | Confluence API token                     | `your_token_here`                              |
+| `ATLASSIAN_CONFLUENCE_OAUTH_TOKEN` | OAuth token (alternative)                | `oauth_token_here`                             |
+| `ATLASSIAN_JIRA_API_BASE`          | Optional Jira REST API override          | `https://jira.example.com/rest/api/3`          |
+| `ATLASSIAN_CONFLUENCE_API_BASE`    | Optional Confluence REST API override    | `https://confluence.example.com/wiki/rest/api` |
+| `ATLASSIAN_SITE`                   | Legacy shared hostname fallback          | `your-domain.atlassian.net`                    |
+| `SERVER_LOG_LEVEL`                 | Log verbosity                            | `debug`, `info`, `warn`, `error`               |
 
 ### Best Practices
 
@@ -150,6 +153,7 @@ export ATLASSIAN_JIRA_API_TOKEN=your_token_here
 ### Variable Name Mapping
 
 Viper automatically maps YAML keys to environment variables:
+
 - Nested keys use underscores: `atlassian.jira.site` → `ATLASSIAN_JIRA_SITE`
 - All uppercase: `server.log_level` → `SERVER_LOG_LEVEL`
 
