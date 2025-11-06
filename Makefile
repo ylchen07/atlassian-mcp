@@ -1,11 +1,13 @@
 GOCMD=go
 GOCACHE_DIR?=$(CURDIR)/.cache/go-build
+GOMODCACHE_DIR?=$(CURDIR)/.cache/go-mod
 BIN_DIR?=$(CURDIR)/bin
 BINARY_NAME?=atlassian-mcp
-GOTEST=CGO_ENABLED=0 GOCACHE=$(GOCACHE_DIR) $(GOCMD) test ./...
-GOTIDY=GOCACHE=$(GOCACHE_DIR) $(GOCMD) mod tidy
-GOBUILD=CGO_ENABLED=0 GOCACHE=$(GOCACHE_DIR) $(GOCMD) build
-GORUN=GOCACHE=$(GOCACHE_DIR) $(GOCMD) run ./cmd/server
+GOENV=GOCACHE=$(GOCACHE_DIR) GOMODCACHE=$(GOMODCACHE_DIR)
+GOTEST=CGO_ENABLED=0 $(GOENV) $(GOCMD) test ./...
+GOTIDY=$(GOENV) $(GOCMD) mod tidy
+GOBUILD=CGO_ENABLED=0 $(GOENV) $(GOCMD) build
+GORUN=$(GOENV) $(GOCMD) run ./cmd/server
 GOLANGCI_LINT?=golangci-lint
 LINT_ENV=CGO_ENABLED=0 XDG_CACHE_HOME=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci
 
@@ -15,7 +17,7 @@ deps:
 	$(GOTIDY)
 
 fmt:
-	$(GOCMD) fmt ./...
+	$(GOENV) $(GOCMD) fmt ./...
 
 lint:
 	$(LINT_ENV) $(GOLANGCI_LINT) run ./...
