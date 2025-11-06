@@ -1,15 +1,69 @@
+# Atlassian MCP Server Configuration
+#
+# This file supports two configuration methods:
+#
+# 1. Direct values in YAML:
+#    Simply uncomment and fill in the values below
+#
+# 2. Environment variables (recommended for secrets):
+#    Leave values empty and set environment variables instead.
+#    Variable names use UPPERCASE with underscores, e.g.:
+#      ATLASSIAN_JIRA_SITE=https://jira.example.com
+#      ATLASSIAN_JIRA_EMAIL=user@example.com
+#      ATLASSIAN_JIRA_API_TOKEN=your_token_here
+#
+# Environment variables always override values in this file.
+
 server:
+  # Log level: debug, info, warn, error
+  # Can override with: SERVER_LOG_LEVEL=debug
   log_level: info
+
 atlassian:
   # Optional legacy fallback; if provided it is used when per-service sites are omitted.
+  # Can override with: ATLASSIAN_SITE=your-domain.atlassian.net
   # site: your-domain.atlassian.net
+
   jira:
+    # Jira site URL (required)
+    # Can override with: ATLASSIAN_JIRA_SITE=https://jira.example.com
     site: https://jira.example.com
+
+    # Optional: Override REST API base URL
+    # Can override with: ATLASSIAN_JIRA_API_BASE=https://jira.example.com/rest/api/3
     # api_base: https://jira.example.com/rest/api/3
+
+    # Authentication: Provide EITHER (email + api_token) OR oauth_token
+
+    # Option 1: Email + API Token (recommended for personal use)
+    # Can override with: ATLASSIAN_JIRA_EMAIL=user@example.com
     email: user@example.com
+    # Can override with: ATLASSIAN_JIRA_API_TOKEN=your_api_token
+    # SECURITY NOTE: Consider using environment variable for tokens
     api_token: your_api_token
+
+    # Option 2: OAuth Token (recommended for app-to-app)
+    # Can override with: ATLASSIAN_JIRA_OAUTH_TOKEN=your_oauth_token
+    # oauth_token: your_oauth_token
+
   confluence:
+    # Confluence site URL (required)
+    # Can override with: ATLASSIAN_CONFLUENCE_SITE=https://confluence.example.com
     site: https://confluence.example.com
+
+    # Optional: Override REST API base URL
+    # Can override with: ATLASSIAN_CONFLUENCE_API_BASE=https://confluence.example.com/wiki/rest/api
     # api_base: https://confluence.example.com/wiki/rest/api
+
+    # Authentication: Provide EITHER (email + api_token) OR oauth_token
+
+    # Option 1: Email + API Token (recommended for personal use)
+    # Can override with: ATLASSIAN_CONFLUENCE_EMAIL=user@example.com
     email: user@example.com
+    # Can override with: ATLASSIAN_CONFLUENCE_API_TOKEN=your_api_token
+    # SECURITY NOTE: Consider using environment variable for tokens
     api_token: your_api_token
+
+    # Option 2: OAuth Token (recommended for app-to-app)
+    # Can override with: ATLASSIAN_CONFLUENCE_OAUTH_TOKEN=your_oauth_token
+    # oauth_token: your_oauth_token

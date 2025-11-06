@@ -115,3 +115,63 @@ atlassian:
 		t.Fatalf("Confluence.Site = %q, want %q", got, want)
 	}
 }
+
+func TestLoad_EnvVarsOverrideFileValues(t *testing.T) {
+	tmp := t.TempDir()
+
+	// Create config file with initial values
+	configPath := filepath.Join(tmp, "config.yaml")
+	configYAML := []byte(`server:
+  log_level: info
+atlassian:
+  jira:
+    site: https://jira-file.example.com
+    email: file@example.com
+    api_token: file_token
+  confluence:
+    site: https://confluence-file.example.com
+    email: file@example.com
+    api_token: file_token
+`)
+
+	if err := os.WriteFile(configPath, configYAML, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	// Set environment variables that should override file values
+	t.Setenv("ATLASSIAN_JIRA_SITE", "https://jira-env.example.com")
+	t.Setenv("ATLASSIAN_JIRA_API_TOKEN", "env_token")
+	t.Setenv("ATLASSIAN_CONFLUENCE_EMAIL", "env@example.com")
+	t.Setenv("SERVER_LOG_LEVEL", "debug")
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// Verify env vars override file values
+	if got, want := cfg.Server.LogLevel, "debug"; got != want {
+		t.Errorf("Server.LogLevel = %q, want %q (should be overridden by env)", got, want)
+	}
+
+	if got, want := cfg.Atlassian.Jira.Site, "https://jira-env.example.com"; got != want {
+		t.Errorf("Jira.Site = %q, want %q (should be overridden by env)", got, want)
+	}
+
+	if got, want := cfg.Atlassian.Jira.APIToken, "env_token"; got != want {
+		t.Errorf("Jira.APIToken = %q, want %q (should be overridden by env)", got, want)
+	}
+
+	if got, want := cfg.Atlassian.Confluence.Email, "env@example.com"; got != want {
+		t.Errorf("Confluence.Email = %q, want %q (should be overridden by env)", got, want)
+	}
+
+	// Verify file values remain when no env var is set
+	if got, want := cfg.Atlassian.Jira.Email, "file@example.com"; got != want {
+		t.Errorf("Jira.Email = %q, want %q (should come from file)", got, want)
+	}
+
+	if got, want := cfg.Atlassian.Confluence.Site, "https://confluence-file.example.com"; got != want {
+		t.Errorf("Confluence.Site = %q, want %q (should come from file)", got, want)
+	}
+}
