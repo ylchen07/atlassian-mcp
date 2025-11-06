@@ -7,10 +7,10 @@ bin/
 *.dll
 *.so
 
-# Environment files
+# Environment files with secrets
 .env
 .env.local
-.envrc
+# Note: .envrc is committed as it contains project config, not secrets
 
 # IDE files
 .vscode/
