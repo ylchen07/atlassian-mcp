@@ -11,7 +11,7 @@ GORUN=$(GOENV) $(GOCMD) run ./cmd/server
 GOLANGCI_LINT?=golangci-lint
 LINT_ENV=CGO_ENABLED=0 XDG_CACHE_HOME=$(CURDIR)/.cache GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci
 
-.PHONY: deps fmt lint test test-coverage build run clean
+.PHONY: deps fmt lint test test-coverage build run clean install
 
 deps:
 	$(GOTIDY)
@@ -45,6 +45,16 @@ build: | $(BIN_DIR)
 
 run:
 	$(GORUN)
+
+install: build
+	@echo "Installing $(BINARY_NAME) to ~/.local/bin..."
+	@mkdir -p ~/.local/bin
+	@cp $(BIN_DIR)/$(BINARY_NAME) ~/.local/bin/$(BINARY_NAME)
+	@chmod +x ~/.local/bin/$(BINARY_NAME)
+	@echo "✓ Installed to ~/.local/bin/$(BINARY_NAME)"
+	@echo ""
+	@echo "Make sure ~/.local/bin is in your PATH:"
+	@echo "  export PATH=\"\$$HOME/.local/bin:\$$PATH\""
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)

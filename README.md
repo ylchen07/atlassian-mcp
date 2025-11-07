@@ -4,11 +4,12 @@ A Go implementation of the [Model Context Protocol (MCP)](https://modelcontextpr
 
 ## Features
 
-- **8 Jira Tools**: Projects, issues, search (JQL), comments, transitions, attachments
-- **4 Confluence Tools**: Spaces, pages, search (CQL), content management
+- **Jira Tools**: Projects, issues, search (JQL) - *more tools coming soon*
+- **Confluence Tools**: Spaces, pages, search (CQL), content management
 - **Flexible Configuration**: YAML files, environment variables, or hybrid approach
 - **Smart Caching**: Session-based project caching to minimize API calls
 - **Dual Authentication**: OAuth or Basic Auth (email + API token)
+- **Self-Hosted Support**: Works with Jira/Confluence Data Center (with context paths)
 
 ## Quick Start
 
@@ -45,11 +46,26 @@ See [Configuration](#configuration) for all options.
 
 ### 3. Build & Run
 
+**Option A: Install to PATH (Recommended)**
+
+```bash
+make install
+# Installs to ~/.local/bin/atlassian-mcp
+
+# Run from anywhere
+atlassian-mcp
+```
+
+**Option B: Build Only**
+
 ```bash
 make build
 ./bin/atlassian-mcp
+```
 
-# Or run directly
+**Option C: Run Directly (Development)**
+
+```bash
 make run
 ```
 
@@ -59,16 +75,18 @@ The server communicates over stdio and can be connected to any MCP-compatible cl
 
 ### Jira
 
-| Tool                    | Description                        |
-| ----------------------- | ---------------------------------- |
-| `jira.list_projects`    | List accessible projects (cached)  |
-| `jira.search_issues`    | Execute JQL queries                |
-| `jira.create_issue`     | Create new issues                  |
-| `jira.update_issue`     | Update issue fields                |
-| `jira.add_comment`      | Add comments to issues             |
-| `jira.list_transitions` | Get available workflow transitions |
-| `jira.transition_issue` | Move issues through workflow       |
-| `jira.add_attachment`   | Upload file attachments            |
+| Tool                    | Status | Description                        |
+| ----------------------- | ------ | ---------------------------------- |
+| `jira.list_projects`    | ✅      | List accessible projects (cached)  |
+| `jira.search_issues`    | ✅      | Execute JQL queries                |
+| `jira.create_issue`     | 🚧      | Create new issues                  |
+| `jira.update_issue`     | 🚧      | Update issue fields                |
+| `jira.add_comment`      | 🚧      | Add comments to issues             |
+| `jira.list_transitions` | 🚧      | Get available workflow transitions |
+| `jira.transition_issue` | 🚧      | Move issues through workflow       |
+| `jira.add_attachment`   | 🚧      | Upload file attachments            |
+
+✅ = Available now | 🚧 = Coming soon
 
 ### Confluence
 
