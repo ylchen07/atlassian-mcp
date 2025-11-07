@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ylchen07/atlassian-mcp/internal/confluence"
@@ -101,7 +102,7 @@ func (c *ConfluenceTools) handleListSpaces(ctx context.Context, _ mcp.CallToolRe
 	for _, space := range spaces {
 		description := strings.TrimSpace(space.Description.Plain.Value)
 		result.Spaces = append(result.Spaces, ConfluenceSpace{
-			ID:          space.ID,
+			ID:          strconv.Itoa(space.ID),
 			Key:         space.Key,
 			Name:        space.Name,
 			Description: description,
@@ -151,13 +152,14 @@ func (c *ConfluenceTools) handleSearchContent(ctx context.Context, _ mcp.CallToo
 
 	payload := ConfluenceSearchResult{Results: make([]ConfluencePageSummary, 0, len(results))}
 	for _, content := range results {
+		idStr := strconv.Itoa(content.ID)
 		payload.Results = append(payload.Results, ConfluencePageSummary{
-			ID:      content.ID,
+			ID:      idStr,
 			Title:   content.Title,
 			Type:    content.Type,
 			Status:  content.Status,
 			Version: content.Version.Number,
-			URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, content.ID),
+			URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, idStr),
 		})
 	}
 
@@ -202,11 +204,12 @@ func (c *ConfluenceTools) handleCreatePage(ctx context.Context, _ mcp.CallToolRe
 		return mcp.NewToolResultErrorFromErr("confluence create page failed", err), nil
 	}
 
+	idStr := strconv.Itoa(created.ID)
 	result := ConfluencePageResult{
-		ID:      created.ID,
+		ID:      idStr,
 		Title:   created.Title,
 		Version: created.Version.Number,
-		URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, created.ID),
+		URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, idStr),
 	}
 
 	fallback := fmt.Sprintf("Created Confluence page %s", created.Title)
@@ -225,11 +228,12 @@ func (c *ConfluenceTools) handleUpdatePage(ctx context.Context, _ mcp.CallToolRe
 		return mcp.NewToolResultErrorFromErr("confluence update page failed", err), nil
 	}
 
+	idStr := strconv.Itoa(updated.ID)
 	result := ConfluencePageResult{
-		ID:      updated.ID,
+		ID:      idStr,
 		Title:   updated.Title,
 		Version: updated.Version.Number,
-		URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, updated.ID),
+		URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, idStr),
 	}
 
 	fallback := fmt.Sprintf("Updated Confluence page %s", updated.Title)

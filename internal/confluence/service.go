@@ -10,7 +10,7 @@ import (
 	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
 )
 
-const apiPrefix = "/wiki/rest/api"
+const apiPrefix = "/rest/api"
 
 // Service exposes Confluence REST endpoints used by the MCP server.
 type Service struct {
@@ -24,7 +24,7 @@ func NewService(client *atlassian.HTTPClient) *Service {
 
 // Space represents a Confluence space summary.
 type Space struct {
-	ID          string `json:"id"`
+	ID          int    `json:"id"`
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description struct {
@@ -36,7 +36,7 @@ type Space struct {
 
 // Content represents Confluence content (pages, blog posts).
 type Content struct {
-	ID      string `json:"id"`
+	ID      int    `json:"id"`
 	Type    string `json:"type"`
 	Status  string `json:"status"`
 	Title   string `json:"title"`
