@@ -1,6 +1,10 @@
 # Go caches (build cache and module cache)
 .cache/
 
+# Test coverage reports
+coverage.out
+coverage.html
+
 # Executables
 bin/
 *.exe

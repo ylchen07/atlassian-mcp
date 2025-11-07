@@ -179,12 +179,14 @@ See [`config.example.yaml`](config.example.yaml) for complete schema with inline
 ### Build Commands
 
 ```bash
-make deps   # Install dependencies
-make fmt    # Format code
-make lint   # Run linters (requires golangci-lint v1.55+)
-make test   # Run unit tests
-make build  # Build binary to bin/atlassian-mcp
-make run    # Run server directly
+make deps          # Install dependencies
+make fmt           # Format code
+make lint          # Run linters (requires golangci-lint v1.55+)
+make test          # Run unit tests
+make test-coverage # Generate test coverage report
+make build         # Build binary to bin/atlassian-mcp
+make run           # Run server directly
+make clean         # Remove build artifacts and cache
 ```
 
 ### Testing
@@ -194,6 +196,14 @@ make run    # Run server directly
 ```bash
 make test
 ```
+
+**Test Coverage**:
+
+```bash
+make test-coverage  # Generates coverage.out and coverage.html
+```
+
+Opens `coverage.html` in your browser to see detailed line-by-line coverage visualization.
 
 **Integration Tests** (requires real Atlassian credentials):
 
