@@ -118,13 +118,38 @@ export ATLASSIAN_JIRA_API_TOKEN=your_token_here
 - Use environment variables for sensitive data (tokens)
 - Environment variables **always override** file values
 
+### Configuration File Search Path
+
+When the application starts, it searches for `config.yaml` in the following order:
+
+**1. Explicit path via `--config` flag** (highest priority)
+```bash
+./bin/atlassian-mcp --config /path/to/config.yaml        # Use specific file
+./bin/atlassian-mcp --config /path/to/directory/         # Look for config.yaml in directory
+```
+
+**2. Current working directory**
+```bash
+./bin/atlassian-mcp  # Looks for ./config.yaml
+```
+
+**3. User configuration directory** (fallback)
+- Linux/macOS: `~/.config/atlassian-mcp/config.yaml`
+- Windows: `%APPDATA%\atlassian-mcp\config.yaml`
+
+**4. Environment variables** (always loaded, override all file values)
+
+**Note**: A configuration file is optional if all required settings are provided via environment variables.
+
 ### Configuration Precedence
 
-1. **Environment variables** (highest priority)
+Configuration values are resolved in this order (highest to lowest priority):
+
+1. **Environment variables** (always override file values)
 2. **Config file** specified via `--config` flag
 3. **Local config.yaml** in current directory
 4. **User config** at `~/.config/atlassian-mcp/config.yaml`
-5. **Defaults** (lowest priority)
+5. **Defaults** (e.g., `log_level: info`)
 
 ### Key Environment Variables
 
