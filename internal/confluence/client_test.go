@@ -1,10 +1,8 @@
 package confluence
 
 import (
-	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
@@ -12,15 +10,25 @@ import (
 func TestNewClientRequiresSite(t *testing.T) {
 	t.Parallel()
 
-	if _, err := NewClient(" ", config.ServiceCredentials{Email: "user", APIToken: "token"}); err == nil {
-		t.Fatalf("expected validation error")
+	_, err := NewClient("", config.ServiceCredentials{Email: "user", APIToken: "token"})
+	if err == nil || !strings.Contains(err.Error(), "site") {
+		t.Fatalf("expected site validation error, got %v", err)
+	}
+}
+
+func TestNewClientRequiresCredentials(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewClient("https://example.atlassian.net", config.ServiceCredentials{})
+	if err == nil || !strings.Contains(err.Error(), "credentials") {
+		t.Fatalf("expected credentials validation error, got %v", err)
 	}
 }
 
 func TestNewClientBasicAuth(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewClient("https://example.atlassian.net/wiki/rest/api", config.ServiceCredentials{
+	client, err := NewClient("https://example.atlassian.net/wiki", config.ServiceCredentials{
 		Email:    "user@example.com",
 		APIToken: "secret",
 	})
@@ -28,67 +36,82 @@ func TestNewClientBasicAuth(t *testing.T) {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	if !client.Auth.HasBasicAuth() {
-		t.Fatalf("expected basic auth")
+	if client.Email != "user@example.com" {
+		t.Fatalf("expected email to be set, got %s", client.Email)
 	}
 
-	if ua := client.Auth.GetUserAgent(); ua != "atlassian-mcp" {
-		t.Fatalf("expected default user agent, got %s", ua)
+	if client.APIToken != "secret" {
+		t.Fatalf("expected API token to be set")
 	}
 
-	if site := strings.TrimRight(client.Site.String(), "/"); site != "https://example.atlassian.net" {
-		t.Fatalf("expected trimmed site, got %s", site)
+	if client.BaseURL != "https://example.atlassian.net/wiki" {
+		t.Fatalf("expected base URL to be set, got %s", client.BaseURL)
 	}
 }
 
-func TestNewClientOAuth(t *testing.T) {
+func TestNewClientOAuthToken(t *testing.T) {
 	t.Parallel()
 
 	client, err := NewClient("https://example.atlassian.net", config.ServiceCredentials{
-		OAuthToken: "token",
+		OAuthToken: "bearer-token",
 	})
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	if client.Auth.GetBearerToken() != "token" {
-		t.Fatalf("expected bearer token to be configured")
+	if client.OAuthToken != "bearer-token" {
+		t.Fatalf("expected OAuth token to be set, got %s", client.OAuthToken)
+	}
+
+	if client.BaseURL != "https://example.atlassian.net" {
+		t.Fatalf("expected base URL to be set, got %s", client.BaseURL)
 	}
 }
 
-func TestNewClientOptions(t *testing.T) {
+func TestNewClientTrimsTrailingSlash(t *testing.T) {
 	t.Parallel()
 
-	customHTTP := &http.Client{Timeout: 5 * time.Second}
-
-	client, err := NewClient(
-		"https://example.atlassian.net",
-		config.ServiceCredentials{Email: "user", APIToken: "token"},
-		WithHTTPClient(customHTTP),
-		WithUserAgent("custom-agent"),
-	)
+	client, err := NewClient("https://confluence.example.com/", config.ServiceCredentials{
+		Email:    "user",
+		APIToken: "token",
+	})
 	if err != nil {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	httpClient, ok := client.HTTP.(*http.Client)
-	if !ok || httpClient != customHTTP {
-		t.Fatalf("expected HTTP override to be used")
-	}
-
-	if ua := client.Auth.GetUserAgent(); ua != "custom-agent" {
-		t.Fatalf("expected user agent override, got %s", ua)
+	if client.BaseURL != "https://confluence.example.com" {
+		t.Fatalf("expected trailing slash to be trimmed, got %s", client.BaseURL)
 	}
 }
 
-func TestNormalizeSite(t *testing.T) {
+func TestNewClientAddsHTTPS(t *testing.T) {
 	t.Parallel()
 
-	out, err := normalizeSite("https://example.atlassian.net/wiki/rest/api")
+	client, err := NewClient("confluence.example.com", config.ServiceCredentials{
+		Email:    "user",
+		APIToken: "token",
+	})
 	if err != nil {
-		t.Fatalf("normalizeSite error: %v", err)
+		t.Fatalf("NewClient error: %v", err)
 	}
-	if out != "https://example.atlassian.net" {
-		t.Fatalf("unexpected site: %s", out)
+
+	if !strings.HasPrefix(client.BaseURL, "https://") {
+		t.Fatalf("expected https:// prefix to be added, got %s", client.BaseURL)
+	}
+}
+
+func TestNewClientWithContextPath(t *testing.T) {
+	t.Parallel()
+
+	client, err := NewClient("https://example.com/wiki", config.ServiceCredentials{
+		Email:    "user",
+		APIToken: "token",
+	})
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
+
+	if client.BaseURL != "https://example.com/wiki" {
+		t.Fatalf("expected context path to be preserved, got %s", client.BaseURL)
 	}
 }
