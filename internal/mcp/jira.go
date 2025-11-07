@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -48,65 +47,66 @@ func NewJiraTools(s *server.MCPServer, service *jira.Service, cache *state.Cache
 		mcp.NewTypedToolHandler(jt.handleSearchIssues),
 	)
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.create_issue",
-			mcp.WithDescription("Create a new Jira issue in the specified project"),
-			mcp.WithInputSchema[JiraCreateIssueArgs](),
-			mcp.WithOutputSchema[JiraIssueResult](),
-		),
-		mcp.NewTypedToolHandler(jt.handleCreateIssue),
-	)
+	// TEMPORARY: Unimplemented tools - will be added incrementally
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.create_issue",
+	// 		mcp.WithDescription("Create a new Jira issue in the specified project"),
+	// 		mcp.WithInputSchema[JiraCreateIssueArgs](),
+	// 		mcp.WithOutputSchema[JiraIssueResult](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleCreateIssue),
+	// )
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.update_issue",
-			mcp.WithDescription("Update fields on an existing Jira issue"),
-			mcp.WithInputSchema[JiraUpdateIssueArgs](),
-			mcp.WithOutputSchema[OperationStatus](),
-		),
-		mcp.NewTypedToolHandler(jt.handleUpdateIssue),
-	)
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.update_issue",
+	// 		mcp.WithDescription("Update fields on an existing Jira issue"),
+	// 		mcp.WithInputSchema[JiraUpdateIssueArgs](),
+	// 		mcp.WithOutputSchema[OperationStatus](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleUpdateIssue),
+	// )
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.add_comment",
-			mcp.WithDescription("Add a comment to an existing Jira issue"),
-			mcp.WithInputSchema[JiraAddCommentArgs](),
-			mcp.WithOutputSchema[OperationStatus](),
-		),
-		mcp.NewTypedToolHandler(jt.handleAddComment),
-	)
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.add_comment",
+	// 		mcp.WithDescription("Add a comment to an existing Jira issue"),
+	// 		mcp.WithInputSchema[JiraAddCommentArgs](),
+	// 		mcp.WithOutputSchema[OperationStatus](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleAddComment),
+	// )
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.list_transitions",
-			mcp.WithDescription("List available workflow transitions for an issue"),
-			mcp.WithInputSchema[JiraListTransitionsArgs](),
-			mcp.WithOutputSchema[JiraTransitionsResult](),
-		),
-		mcp.NewTypedToolHandler(jt.handleListTransitions),
-	)
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.list_transitions",
+	// 		mcp.WithDescription("List available workflow transitions for an issue"),
+	// 		mcp.WithInputSchema[JiraListTransitionsArgs](),
+	// 		mcp.WithOutputSchema[JiraTransitionsResult](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleListTransitions),
+	// )
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.transition_issue",
-			mcp.WithDescription("Move an issue using a workflow transition"),
-			mcp.WithInputSchema[JiraTransitionIssueArgs](),
-			mcp.WithOutputSchema[OperationStatus](),
-		),
-		mcp.NewTypedToolHandler(jt.handleTransitionIssue),
-	)
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.transition_issue",
+	// 		mcp.WithDescription("Move an issue using a workflow transition"),
+	// 		mcp.WithInputSchema[JiraTransitionIssueArgs](),
+	// 		mcp.WithOutputSchema[OperationStatus](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleTransitionIssue),
+	// )
 
-	s.AddTool(
-		mcp.NewTool(
-			"jira.add_attachment",
-			mcp.WithDescription("Upload an attachment to a Jira issue"),
-			mcp.WithInputSchema[JiraAddAttachmentArgs](),
-			mcp.WithOutputSchema[OperationStatus](),
-		),
-		mcp.NewTypedToolHandler(jt.handleAddAttachment),
-	)
+	// s.AddTool(
+	// 	mcp.NewTool(
+	// 		"jira.add_attachment",
+	// 		mcp.WithDescription("Upload an attachment to a Jira issue"),
+	// 		mcp.WithInputSchema[JiraAddAttachmentArgs](),
+	// 		mcp.WithOutputSchema[OperationStatus](),
+	// 	),
+	// 	mcp.NewTypedToolHandler(jt.handleAddAttachment),
+	// )
 
 	return jt
 }
@@ -283,115 +283,116 @@ type JiraIssueResult struct {
 	URL string `json:"url"`
 }
 
-func (j *JiraTools) handleCreateIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraCreateIssueArgs) (*mcp.CallToolResult, error) {
-	created, err := j.service.CreateIssue(ctx, jira.IssueInput{
-		ProjectKey:  args.ProjectKey,
-		Summary:     args.Summary,
-		IssueType:   args.IssueType,
-		Description: args.Description,
-		Fields:      args.Fields,
-	})
-	if err != nil {
-		return mcp.NewToolResultErrorFromErr("jira create issue failed", err), nil
-	}
+// TEMPORARY: Unimplemented handlers - will be added incrementally
+// func (j *JiraTools) handleCreateIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraCreateIssueArgs) (*mcp.CallToolResult, error) {
+// 	created, err := j.service.CreateIssue(ctx, jira.IssueInput{
+// 		ProjectKey:  args.ProjectKey,
+// 		Summary:     args.Summary,
+// 		IssueType:   args.IssueType,
+// 		Description: args.Description,
+// 		Fields:      args.Fields,
+// 	})
+// 	if err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira create issue failed", err), nil
+// 	}
 
-	result := JiraIssueResult{
-		Key: created.Key,
-		ID:  created.ID,
-		URL: fmt.Sprintf("%s/browse/%s", j.siteURL, created.Key),
-	}
+// 	result := JiraIssueResult{
+// 		Key: created.Key,
+// 		ID:  created.ID,
+// 		URL: fmt.Sprintf("%s/browse/%s", j.siteURL, created.Key),
+// 	}
 
-	fallback := fmt.Sprintf("Created Jira issue %s", result.Key)
-	return mcp.NewToolResultStructured(result, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Created Jira issue %s", result.Key)
+// 	return mcp.NewToolResultStructured(result, fallback), nil
+// }
 
-// JiraUpdateIssueArgs define fields for updates.
-type JiraUpdateIssueArgs struct {
-	Key         string         `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
-	Summary     *string        `json:"summary,omitempty" jsonschema_description:"New summary"`
-	Description any            `json:"description,omitempty" jsonschema_description:"New description"`
-	Fields      map[string]any `json:"fields,omitempty" jsonschema_description:"Additional field updates"`
-}
+// // JiraUpdateIssueArgs define fields for updates.
+// type JiraUpdateIssueArgs struct {
+// 	Key         string         `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
+// 	Summary     *string        `json:"summary,omitempty" jsonschema_description:"New summary"`
+// 	Description any            `json:"description,omitempty" jsonschema_description:"New description"`
+// 	Fields      map[string]any `json:"fields,omitempty" jsonschema_description:"Additional field updates"`
+// }
 
-func (j *JiraTools) handleUpdateIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraUpdateIssueArgs) (*mcp.CallToolResult, error) {
-	updates := map[string]any{}
-	if args.Fields != nil {
-		for k, v := range args.Fields {
-			updates[k] = v
-		}
-	}
-	if args.Summary != nil {
-		updates["summary"] = *args.Summary
-	}
-	if args.Description != nil {
-		updates["description"] = args.Description
-	}
+// func (j *JiraTools) handleUpdateIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraUpdateIssueArgs) (*mcp.CallToolResult, error) {
+// 	updates := map[string]any{}
+// 	if args.Fields != nil {
+// 		for k, v := range args.Fields {
+// 			updates[k] = v
+// 		}
+// 	}
+// 	if args.Summary != nil {
+// 		updates["summary"] = *args.Summary
+// 	}
+// 	if args.Description != nil {
+// 		updates["description"] = args.Description
+// 	}
 
-	if len(updates) == 0 {
-		return mcp.NewToolResultError("no updates provided"), nil
-	}
+// 	if len(updates) == 0 {
+// 		return mcp.NewToolResultError("no updates provided"), nil
+// 	}
 
-	if err := j.service.UpdateIssue(ctx, args.Key, updates); err != nil {
-		return mcp.NewToolResultErrorFromErr("jira update issue failed", err), nil
-	}
+// 	if err := j.service.UpdateIssue(ctx, args.Key, updates); err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira update issue failed", err), nil
+// 	}
 
-	fallback := fmt.Sprintf("Updated Jira issue %s", args.Key)
-	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Updated Jira issue %s", args.Key)
+// 	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+// }
 
-// JiraAddCommentArgs parameters for commenting.
-type JiraAddCommentArgs struct {
-	Key  string `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
-	Body any    `json:"body" jsonschema:"required" jsonschema_description:"Comment body as plain text or Atlassian document"`
-}
+// // JiraAddCommentArgs parameters for commenting.
+// type JiraAddCommentArgs struct {
+// 	Key  string `json:"key" jsonschema:"required" jsonschema_description:"Issue key"`
+// 	Body any    `json:"body" jsonschema:"required" jsonschema_description:"Comment body as plain text or Atlassian document"`
+// }
 
-func (j *JiraTools) handleAddComment(ctx context.Context, _ mcp.CallToolRequest, args JiraAddCommentArgs) (*mcp.CallToolResult, error) {
-	if err := j.service.AddComment(ctx, args.Key, args.Body); err != nil {
-		return mcp.NewToolResultErrorFromErr("jira add comment failed", err), nil
-	}
+// func (j *JiraTools) handleAddComment(ctx context.Context, _ mcp.CallToolRequest, args JiraAddCommentArgs) (*mcp.CallToolResult, error) {
+// 	if err := j.service.AddComment(ctx, args.Key, args.Body); err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira add comment failed", err), nil
+// 	}
 
-	fallback := fmt.Sprintf("Added comment to Jira issue %s", args.Key)
-	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Added comment to Jira issue %s", args.Key)
+// 	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+// }
 
-func (j *JiraTools) handleListTransitions(ctx context.Context, _ mcp.CallToolRequest, args JiraListTransitionsArgs) (*mcp.CallToolResult, error) {
-	transitions, err := j.service.ListTransitions(ctx, args.Key)
-	if err != nil {
-		return mcp.NewToolResultErrorFromErr("jira list transitions failed", err), nil
-	}
+// func (j *JiraTools) handleListTransitions(ctx context.Context, _ mcp.CallToolRequest, args JiraListTransitionsArgs) (*mcp.CallToolResult, error) {
+// 	transitions, err := j.service.ListTransitions(ctx, args.Key)
+// 	if err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira list transitions failed", err), nil
+// 	}
 
-	result := JiraTransitionsResult{Transitions: make([]JiraTransition, 0, len(transitions))}
-	for _, tr := range transitions {
-		result.Transitions = append(result.Transitions, JiraTransition{
-			ID:   tr.ID,
-			Name: tr.Name,
-			To:   tr.To,
-		})
-	}
+// 	result := JiraTransitionsResult{Transitions: make([]JiraTransition, 0, len(transitions))}
+// 	for _, tr := range transitions {
+// 		result.Transitions = append(result.Transitions, JiraTransition{
+// 			ID:   tr.ID,
+// 			Name: tr.Name,
+// 			To:   tr.To,
+// 		})
+// 	}
 
-	fallback := fmt.Sprintf("Found %d transitions for %s", len(result.Transitions), args.Key)
-	return mcp.NewToolResultStructured(result, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Found %d transitions for %s", len(result.Transitions), args.Key)
+// 	return mcp.NewToolResultStructured(result, fallback), nil
+// }
 
-func (j *JiraTools) handleTransitionIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraTransitionIssueArgs) (*mcp.CallToolResult, error) {
-	if err := j.service.TransitionIssue(ctx, args.Key, args.TransitionID, args.Fields); err != nil {
-		return mcp.NewToolResultErrorFromErr("jira transition issue failed", err), nil
-	}
+// func (j *JiraTools) handleTransitionIssue(ctx context.Context, _ mcp.CallToolRequest, args JiraTransitionIssueArgs) (*mcp.CallToolResult, error) {
+// 	if err := j.service.TransitionIssue(ctx, args.Key, args.TransitionID, args.Fields); err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira transition issue failed", err), nil
+// 	}
 
-	fallback := fmt.Sprintf("Transitioned %s using %s", args.Key, args.TransitionID)
-	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Transitioned %s using %s", args.Key, args.TransitionID)
+// 	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+// }
 
-func (j *JiraTools) handleAddAttachment(ctx context.Context, _ mcp.CallToolRequest, args JiraAddAttachmentArgs) (*mcp.CallToolResult, error) {
-	data, err := base64.StdEncoding.DecodeString(args.Data)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("invalid base64 data: %v", err)), nil
-	}
+// func (j *JiraTools) handleAddAttachment(ctx context.Context, _ mcp.CallToolRequest, args JiraAddAttachmentArgs) (*mcp.CallToolResult, error) {
+// 	data, err := base64.StdEncoding.DecodeString(args.Data)
+// 	if err != nil {
+// 		return mcp.NewToolResultError(fmt.Sprintf("invalid base64 data: %v", err)), nil
+// 	}
 
-	if err := j.service.AddAttachment(ctx, args.Key, args.FileName, data); err != nil {
-		return mcp.NewToolResultErrorFromErr("jira add attachment failed", err), nil
-	}
+// 	if err := j.service.AddAttachment(ctx, args.Key, args.FileName, data); err != nil {
+// 		return mcp.NewToolResultErrorFromErr("jira add attachment failed", err), nil
+// 	}
 
-	fallback := fmt.Sprintf("Uploaded attachment %s to %s", args.FileName, args.Key)
-	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
-}
+// 	fallback := fmt.Sprintf("Uploaded attachment %s to %s", args.FileName, args.Key)
+// 	return mcp.NewToolResultStructured(OperationStatus{Message: fallback}, fallback), nil
+// }

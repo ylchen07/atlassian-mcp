@@ -62,7 +62,7 @@ func run(path string) error {
 		logger.Error("failed to initialize Jira client", slog.Any("error", err))
 		return fmt.Errorf("initialize jira client: %w", err)
 	}
-	jiraSite = strings.TrimRight(jiraClient.Site.String(), "/")
+	jiraSite = strings.TrimRight(jiraClient.BaseURL, "/")
 
 	confluenceClient, err := confluence.NewClient(confluenceSite, cfg.Atlassian.Confluence.ServiceCredentials)
 	if err != nil {
