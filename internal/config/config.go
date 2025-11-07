@@ -83,6 +83,11 @@ func Load(path string) (*Config, error) {
 
 	cfg.applyDefaults()
 
+	// Try to load credentials from .netrc if not already set
+	if err := cfg.applyNetrcDefaults(); err != nil {
+		return nil, err
+	}
+
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}

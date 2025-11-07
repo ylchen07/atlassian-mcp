@@ -81,14 +81,14 @@ The server communicates over stdio and can be connected to any MCP-compatible cl
 
 ## Configuration
 
-### File Search Path
+### Configuration Sources
 
-The server searches for `config.yaml` in this order:
+The server loads configuration from multiple sources (in precedence order):
 
-1. **`--config` flag**: `./bin/atlassian-mcp --config /path/to/config.yaml`
-2. **Current directory**: `./config.yaml`
-3. **User config**: `~/.config/atlassian-mcp/config.yaml` (Linux/macOS) or `%APPDATA%\atlassian-mcp\config.yaml` (Windows)
-4. **Environment variables**: Always loaded and override file values
+1. **Environment variables** - Highest priority, always override other sources
+2. **`config.yaml`** - Searched in: `--config` flag path → current directory → `~/.config/atlassian-mcp/`
+3. **`.netrc` file** - Automatic credential loading from `~/.netrc` or `$NETRC` path
+4. **Defaults** - Built-in fallback values (e.g., `log_level: info`)
 
 ### Required Settings
 
@@ -99,10 +99,17 @@ The server searches for `config.yaml` in this order:
   - Basic Auth: `*_EMAIL` + `*_API_TOKEN`
   - OAuth: `*_OAUTH_TOKEN`
 
-**Example**: Hybrid approach (URLs in file, secrets in environment)
+**Example 1**: Using `.netrc` for credentials (recommended for security)
+
+```bash
+# ~/.netrc (chmod 600)
+machine your-domain.atlassian.net
+  login user@example.com
+  password your_api_token
+```
 
 ```yaml
-# config.yaml
+# config.yaml (only site URLs needed)
 atlassian:
   jira:
     site: https://your-domain.atlassian.net
@@ -110,10 +117,13 @@ atlassian:
     site: https://your-domain.atlassian.net
 ```
 
+**Example 2**: Using environment variables
+
 ```bash
-# Environment variables
+export ATLASSIAN_JIRA_SITE=https://your-domain.atlassian.net
 export ATLASSIAN_JIRA_EMAIL=user@example.com
 export ATLASSIAN_JIRA_API_TOKEN=secret_token
+export ATLASSIAN_CONFLUENCE_SITE=https://your-domain.atlassian.net
 export ATLASSIAN_CONFLUENCE_EMAIL=user@example.com
 export ATLASSIAN_CONFLUENCE_API_TOKEN=secret_token
 ```
@@ -137,8 +147,30 @@ export ATLASSIAN_CONFLUENCE_API_TOKEN=secret_token
 - `ATLASSIAN_JIRA_API_BASE` - Override REST API base URL
 - `ATLASSIAN_CONFLUENCE_API_BASE` - Override REST API base URL
 - `ATLASSIAN_SITE` - Legacy shared hostname fallback
+- `NETRC` - Custom path to .netrc file (default: `~/.netrc`)
 
 **Mapping**: YAML keys map to uppercase with underscores: `atlassian.jira.site` → `ATLASSIAN_JIRA_SITE`
+
+### Using .netrc for Credentials
+
+The server automatically reads credentials from `.netrc` file if email/api_token are not provided via config or environment variables.
+
+**Format**:
+
+```
+machine your-domain.atlassian.net
+  login user@example.com
+  password your_api_token
+```
+
+**Benefits**:
+
+- ✅ Standard Unix credential storage (used by `curl`, `git`, etc.)
+- ✅ Keeps secrets out of config files and environment variables
+- ✅ One credential file for multiple tools
+- ✅ Supports multiple machines in one file
+
+**Security**: Ensure `.netrc` has proper permissions: `chmod 600 ~/.netrc`
 
 See [`config.example.yaml`](config.example.yaml) for complete schema with inline documentation.
 
