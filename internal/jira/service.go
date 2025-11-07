@@ -5,17 +5,19 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/ylchen07/atlassian-mcp/internal/atlassian"
 )
 
 const apiPrefix = "/rest/api/latest"
 
 // Service exposes Jira REST endpoints used by the MCP server.
 type Service struct {
-	client *HTTPClient
+	client *atlassian.HTTPClient
 }
 
 // NewService creates a Jira service using the provided HTTP client.
-func NewService(client *HTTPClient) *Service {
+func NewService(client *atlassian.HTTPClient) *Service {
 	return &Service{client: client}
 }
 

@@ -1,4 +1,4 @@
-package jira
+package atlassian
 
 import (
 	"bytes"
@@ -13,18 +13,21 @@ import (
 	"github.com/ylchen07/atlassian-mcp/internal/config"
 )
 
-// HTTPClient is a simple HTTP client for Jira REST API.
+// HTTPClient is a simple HTTP client for Atlassian REST APIs (Jira, Confluence).
+// It supports both basic authentication (email + API token) and OAuth bearer tokens.
 type HTTPClient struct {
 	BaseURL    string
 	Email      string
 	APIToken   string
+	OAuthToken string
 	HTTPClient *http.Client
 }
 
-// NewHTTPClient creates a simple Jira HTTP client with basic auth.
+// NewHTTPClient creates an HTTP client for Atlassian services with proper authentication.
+// The baseURL should include any context paths (e.g., https://domain.com/jira).
 func NewHTTPClient(baseURL string, creds config.ServiceCredentials) (*HTTPClient, error) {
 	if baseURL == "" {
-		return nil, fmt.Errorf("base URL is required")
+		return nil, fmt.Errorf("atlassian: base URL is required")
 	}
 
 	// Ensure HTTPS
@@ -32,15 +35,19 @@ func NewHTTPClient(baseURL string, creds config.ServiceCredentials) (*HTTPClient
 		baseURL = "https://" + baseURL
 	}
 
-	// Validate credentials
-	if creds.Email == "" || creds.APIToken == "" {
-		return nil, fmt.Errorf("email and api_token are required")
+	// Validate credentials - either OAuth token OR email+API token
+	hasOAuth := strings.TrimSpace(creds.OAuthToken) != ""
+	hasBasicAuth := strings.TrimSpace(creds.Email) != "" && strings.TrimSpace(creds.APIToken) != ""
+
+	if !hasOAuth && !hasBasicAuth {
+		return nil, fmt.Errorf("atlassian: credentials required (either oauth_token or email+api_token)")
 	}
 
 	return &HTTPClient{
-		BaseURL:  strings.TrimRight(baseURL, "/"),
-		Email:    creds.Email,
-		APIToken: creds.APIToken,
+		BaseURL:    strings.TrimRight(baseURL, "/"),
+		Email:      creds.Email,
+		APIToken:   creds.APIToken,
+		OAuthToken: creds.OAuthToken,
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -69,7 +76,13 @@ func (c *HTTPClient) Do(ctx context.Context, method, path string, body interface
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.SetBasicAuth(c.Email, c.APIToken)
+
+	// Set authentication - prefer OAuth if available
+	if c.OAuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.OAuthToken)
+	} else {
+		req.SetBasicAuth(c.Email, c.APIToken)
+	}
 
 	return c.HTTPClient.Do(req)
 }
@@ -135,6 +148,22 @@ func (c *HTTPClient) Put(ctx context.Context, path string, body interface{}, res
 		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
 			return fmt.Errorf("decode response: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// Delete is a helper for DELETE requests.
+func (c *HTTPClient) Delete(ctx context.Context, path string) error {
+	resp, err := c.Do(ctx, "DELETE", path, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil

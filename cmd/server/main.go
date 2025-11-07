@@ -69,7 +69,7 @@ func run(path string) error {
 		logger.Error("failed to initialize Confluence client", slog.Any("error", err))
 		return fmt.Errorf("initialize confluence client: %w", err)
 	}
-	confluenceSite = strings.TrimRight(confluenceClient.Site.String(), "/")
+	confluenceSite = strings.TrimRight(confluenceClient.BaseURL, "/")
 
 	stateCache := state.NewCache()
 
