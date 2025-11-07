@@ -24,7 +24,7 @@ func NewService(client *atlassian.HTTPClient) *Service {
 
 // Space represents a Confluence space summary.
 type Space struct {
-	ID          int    `json:"id"`
+	ID          string `json:"id"`
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description struct {
@@ -36,7 +36,7 @@ type Space struct {
 
 // Content represents Confluence content (pages, blog posts).
 type Content struct {
-	ID      int    `json:"id"`
+	ID      string `json:"id"`
 	Type    string `json:"type"`
 	Status  string `json:"status"`
 	Title   string `json:"title"`
