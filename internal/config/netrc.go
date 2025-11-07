@@ -38,66 +38,75 @@ func parseNetrc(path string) (map[string]NetrcEntry, error) {
 		line := strings.TrimSpace(scanner.Text())
 
 		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
+		if shouldSkipLine(line) {
 			continue
 		}
 
 		tokens := strings.Fields(line)
-		for i := 0; i < len(tokens); i++ {
-			token := tokens[i]
-
-			switch token {
-			case "machine":
-				// Save previous entry if exists
-				if hasMachine && current.Machine != "" {
-					entries[current.Machine] = current
-				}
-				// Start new entry
-				if i+1 < len(tokens) {
-					current = NetrcEntry{Machine: tokens[i+1]}
-					hasMachine = true
-					i++ // Skip the machine name
-				}
-
-			case "login":
-				if i+1 < len(tokens) {
-					current.Login = tokens[i+1]
-					i++
-				}
-
-			case "password":
-				if i+1 < len(tokens) {
-					current.Password = tokens[i+1]
-					i++
-				}
-
-			case "account":
-				if i+1 < len(tokens) {
-					current.Account = tokens[i+1]
-					i++
-				}
-
-			case "default":
-				// Default machine for unmatched hosts
-				if hasMachine && current.Machine != "" {
-					entries[current.Machine] = current
-				}
-				current = NetrcEntry{Machine: "default"}
-				hasMachine = true
-			}
-		}
+		current, hasMachine = processTokens(tokens, current, hasMachine, entries)
 	}
 
 	// Save last entry
-	if hasMachine && current.Machine != "" {
-		entries[current.Machine] = current
-	}
+	saveEntry(&current, hasMachine, entries)
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("netrc: scan: %w", err)
 	}
 
 	return entries, nil
+}
+
+// shouldSkipLine returns true for empty lines and comments.
+func shouldSkipLine(line string) bool {
+	return line == "" || strings.HasPrefix(line, "#")
+}
+
+// saveEntry saves a netrc entry to the map if it's valid.
+func saveEntry(entry *NetrcEntry, hasMachine bool, entries map[string]NetrcEntry) {
+	if hasMachine && entry.Machine != "" {
+		entries[entry.Machine] = *entry
+	}
+}
+
+// processTokens processes a line of tokens and updates the current entry.
+func processTokens(tokens []string, current NetrcEntry, hasMachine bool, entries map[string]NetrcEntry) (NetrcEntry, bool) {
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+
+		switch token {
+		case "machine":
+			saveEntry(&current, hasMachine, entries)
+			if i+1 < len(tokens) {
+				current = NetrcEntry{Machine: tokens[i+1]}
+				hasMachine = true
+				i++
+			}
+
+		case "login":
+			if i+1 < len(tokens) {
+				current.Login = tokens[i+1]
+				i++
+			}
+
+		case "password":
+			if i+1 < len(tokens) {
+				current.Password = tokens[i+1]
+				i++
+			}
+
+		case "account":
+			if i+1 < len(tokens) {
+				current.Account = tokens[i+1]
+				i++
+			}
+
+		case "default":
+			saveEntry(&current, hasMachine, entries)
+			current = NetrcEntry{Machine: "default"}
+			hasMachine = true
+		}
+	}
+	return current, hasMachine
 }
 
 // findNetrcPath locates the .netrc file.
