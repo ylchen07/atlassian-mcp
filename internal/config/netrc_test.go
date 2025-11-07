@@ -90,7 +90,7 @@ machine api.example.com
 			},
 		},
 		{
-			name: "single line format",
+			name:    "single line format",
 			content: `machine jira.example.com login user@example.com password secret123`,
 			want: map[string]NetrcEntry{
 				"jira.example.com": {

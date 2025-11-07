@@ -25,17 +25,16 @@ func TestNewServerRegistersExpectedTools(t *testing.T) {
 	srv := NewServer(deps)
 
 	tools := srv.ListTools()
-	// Currently only implemented tools (unimplemented ones are commented out)
+	// All Jira and Confluence tools are now implemented
 	expected := []string{
 		"jira.list_projects",
 		"jira.search_issues",
-		// TEMPORARY: These are commented out until implemented
-		// "jira.create_issue",
-		// "jira.update_issue",
-		// "jira.add_comment",
-		// "jira.list_transitions",
-		// "jira.transition_issue",
-		// "jira.add_attachment",
+		"jira.create_issue",
+		"jira.update_issue",
+		"jira.add_comment",
+		"jira.list_transitions",
+		"jira.transition_issue",
+		"jira.add_attachment",
 		"confluence.list_spaces",
 		"confluence.search_pages",
 		"confluence.create_page",
@@ -65,9 +64,9 @@ func TestNewJiraToolsTrimsSiteURL(t *testing.T) {
 		t.Fatalf("expected trimmed site URL, got %s", jt.siteURL)
 	}
 
-	// Currently only 2 Jira tools are implemented (list_projects, search_issues)
-	if len(srv.ListTools()) != 2 {
-		t.Fatalf("expected 2 jira tools, got %d", len(srv.ListTools()))
+	// All 8 Jira tools are now implemented
+	if len(srv.ListTools()) != 8 {
+		t.Fatalf("expected 8 jira tools, got %d", len(srv.ListTools()))
 	}
 }
 
