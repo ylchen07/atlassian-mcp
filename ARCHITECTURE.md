@@ -31,14 +31,14 @@ The Atlassian MCP Server follows a **layered architecture** pattern that separat
 └─────────────────────────────────────────────────┘
                     ↓ Uses
 ┌─────────────────────────────────────────────────┐
-│  Client Layer (client.go files)                 │
-│  - SDK client construction                      │
-│  - Authentication                               │
-│  - HTTP configuration                           │
+│  HTTP Client (internal/atlassian)               │
+│  - Authentication (OAuth/Basic)                 │
+│  - HTTP request/response handling               │
+│  - Common utilities (Get/Post/Put/Delete)       │
 └─────────────────────────────────────────────────┘
                     ↓ Uses
 ┌─────────────────────────────────────────────────┐
-│  External SDK (go-atlassian/v2)                 │
+│  Atlassian REST APIs                            │
 │  - Jira REST API v2                             │
 │  - Confluence REST API                          │
 └─────────────────────────────────────────────────┘
@@ -92,7 +92,7 @@ func (jt *JiraTools) handleListProjects(ctx context.Context, args JiraListProjec
 
 - Define domain models (Project, Issue, Space, Content)
 - Expose business operations (ListProjects, SearchIssues, CreatePage)
-- Transform SDK responses into simplified domain models
+- Transform API responses into simplified domain models
 - Construct API paths and query parameters
 - Handle context propagation for cancellation
 
@@ -110,118 +110,134 @@ type Project struct {
 func (s *Service) ListProjects(ctx context.Context, maxResults int) ([]Project, error) {
     // Build query parameters
     params := url.Values{}
-    params.Set("expand", "lead")
     if maxResults > 0 {
         params.Set("maxResults", strconv.Itoa(maxResults))
     }
 
     // Construct API path
-    path := apiPath("project/search") + "?" + params.Encode()
+    path := apiPath("project")
+    if encoded := params.Encode(); encoded != "" {
+        path += "?" + encoded
+    }
 
-    // Make request using client
-    req, err := s.client.NewRequest(ctx, http.MethodGet, path, "", nil)
-    if err != nil {
+    // Make request using HTTP client
+    var projects []Project
+    if err := s.client.Get(ctx, path, &projects); err != nil {
         return nil, err
     }
 
-    // Parse and return domain model
-    var res struct {
-        Values []Project `json:"values"`
-    }
-    if err := s.client.Do(req, &res); err != nil {
-        return nil, err
-    }
-
-    return res.Values, nil
+    return projects, nil
 }
 ```
 
-### 3. Client Layer (`internal/jira/client.go`, `internal/confluence/client.go`)
+### 3. HTTP Client Layer (`internal/atlassian/httpclient.go`)
 
-**Purpose**: Configure and construct SDK clients
+**Purpose**: Shared HTTP client for all Atlassian API calls
 
 **Responsibilities**:
 
-- Create go-atlassian SDK client instances
+- Create authenticated HTTP client instances
 - Configure authentication (OAuth or Basic Auth)
 - Set up HTTP client with timeouts
+- Provide convenience methods (Get, Post, Put, Delete)
+- Handle common HTTP request/response patterns
 - Normalize site URLs
-- Provide customization options via functional options pattern
 
 **Example**:
 
 ```go
-func NewClient(site string, creds config.ServiceCredentials, opts ...ClientOption) (*jiraapi.Client, error) {
-    // Normalize URL
-    base, err := normalizeSite(site)
+// HTTPClient is a simple HTTP client for Atlassian REST APIs
+type HTTPClient struct {
+    BaseURL    string
+    Email      string
+    APIToken   string
+    OAuthToken string
+    HTTPClient *http.Client
+}
+
+// Create client with authentication
+func NewHTTPClient(baseURL string, creds config.ServiceCredentials) (*HTTPClient, error) {
+    if baseURL == "" {
+        return nil, fmt.Errorf("atlassian: base URL is required")
+    }
+
+    // Ensure HTTPS
+    if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+        baseURL = "https://" + baseURL
+    }
+
+    // Validate credentials - either OAuth token OR email+API token
+    hasOAuth := strings.TrimSpace(creds.OAuthToken) != ""
+    hasBasicAuth := strings.TrimSpace(creds.Email) != "" && strings.TrimSpace(creds.APIToken) != ""
+
+    if !hasOAuth && !hasBasicAuth {
+        return nil, fmt.Errorf("atlassian: credentials required")
+    }
+
+    return &HTTPClient{
+        BaseURL:    strings.TrimRight(baseURL, "/"),
+        Email:      creds.Email,
+        APIToken:   creds.APIToken,
+        OAuthToken: creds.OAuthToken,
+        HTTPClient: &http.Client{Timeout: 30 * time.Second},
+    }, nil
+}
+
+// Convenience method for GET requests
+func (c *HTTPClient) Get(ctx context.Context, path string, result interface{}) error {
+    resp, err := c.Do(ctx, "GET", path, nil)
     if err != nil {
-        return nil, err
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode >= 400 {
+        body, _ := io.ReadAll(resp.Body)
+        return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
     }
 
-    // Create HTTP client with timeout
-    defaultHTTPClient := &http.Client{
-        Timeout: 30 * time.Second,
+    if result != nil {
+        if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+            return fmt.Errorf("decode response: %w", err)
+        }
     }
 
-    // Initialize SDK client
-    client, err := jiraapi.New(defaultHTTPClient, base)
-    if err != nil {
-        return nil, fmt.Errorf("jira: initialise client: %w", err)
-    }
-
-    // Set User-Agent
-    client.Auth.SetUserAgent("atlassian-mcp")
-
-    // Apply custom options
-    for _, opt := range opts {
-        opt(client)
-    }
-
-    // Configure authentication
-    switch {
-    case strings.TrimSpace(creds.OAuthToken) != "":
-        client.Auth.SetBearerToken(creds.OAuthToken)
-    case strings.TrimSpace(creds.Email) != "" && strings.TrimSpace(creds.APIToken) != "":
-        client.Auth.SetBasicAuth(creds.Email, creds.APIToken)
-    default:
-        return nil, fmt.Errorf("jira: insufficient credentials")
-    }
-
-    return client, nil
+    return nil
 }
 ```
 
-## Client vs Service Pattern
+## HTTP Client vs Service Pattern
 
-A key architectural pattern in this codebase is the **separation of infrastructure (`client.go`) from business logic (`service.go`)**.
+A key architectural pattern in this codebase is the **separation of infrastructure (HTTP client) from business logic (service layer)**.
 
-### `client.go` - Infrastructure Layer
+### HTTP Client Layer (`internal/atlassian/httpclient.go`)
 
 **Responsibility**: "How do we connect to Atlassian?"
 
 **What it does**:
 
-- ✅ Client construction and initialization
+- ✅ HTTP client construction and initialization
 - ✅ Authentication setup (OAuth or Basic Auth)
-- ✅ HTTP client configuration (timeouts, transport)
+- ✅ HTTP configuration (timeouts, headers)
 - ✅ URL normalization and validation
-- ✅ Customization options (WithUserAgent, WithHTTPClient)
+- ✅ Common HTTP operations (Get, Post, Put, Delete)
+- ✅ Request/response marshaling
 
 **What it does NOT do**:
 
 - ❌ Business operations (list projects, create issues)
-- ❌ API path construction
-- ❌ Request/response handling
+- ❌ API path construction (e.g., `/rest/api/2/project`)
 - ❌ Domain model transformation
+- ❌ Business logic or validation
 
 **Key characteristics**:
 
-- Created **once** at startup
-- Reused for **all** operations
+- Created **once per service** at startup
+- Reused for **all** operations in that service
 - No knowledge of business concepts (projects, issues, spaces)
 - Pure infrastructure concerns
 
-### `service.go` - Business Logic Layer
+### Service Layer (`internal/jira/service.go`, `internal/confluence/service.go`)
 
 **Responsibility**: "What operations can we perform on Atlassian?"
 
@@ -229,62 +245,71 @@ A key architectural pattern in this codebase is the **separation of infrastructu
 
 - ✅ Define domain models (Project, Issue, Space, Content)
 - ✅ Implement business operations (ListProjects, SearchIssues, CreatePage)
-- ✅ Construct API paths (/rest/api/2/project/search)
+- ✅ Construct API paths (e.g., `/rest/api/2/project`)
 - ✅ Handle query parameters
-- ✅ Transform SDK responses to domain models
+- ✅ Transform API responses to domain models
 - ✅ Accept context for cancellation
+- ✅ Business logic and validation
 
 **What it does NOT do**:
 
 - ❌ Authentication setup
-- ❌ Client initialization
+- ❌ HTTP client initialization
 - ❌ URL normalization
 - ❌ HTTP transport configuration
 
 **Key characteristics**:
 
-- Uses client created by `client.go`
+- Uses HTTP client created at startup
 - Methods called **per-request**
 - Contains business logic and API knowledge
 - Returns simplified, MCP-friendly types
 
 ### Side-by-Side Comparison
 
-| Aspect           | `client.go`                       | `service.go`                       |
-| ---------------- | --------------------------------- | ---------------------------------- |
-| **Purpose**      | Infrastructure setup              | Business operations                |
-| **Concerns**     | Authentication, URLs, HTTP        | Projects, Issues, Spaces, Pages    |
-| **Returns**      | `*jiraapi.Client` or `*cf.Client` | Domain models (`Project`, `Issue`) |
-| **Dependencies** | `config` package only             | Uses client from `client.go`       |
-| **Lifecycle**    | Created once at startup           | Methods called per-request         |
-| **Testability**  | Mock HTTP transport               | Mock client interface              |
-| **Changes when** | Auth method changes, SDK updates  | New features, API endpoints added  |
-| **Knowledge**    | Infrastructure/plumbing           | Business domain/API structure      |
+| Aspect           | HTTP Client (`internal/atlassian`)        | Service Layer (`service.go`)               |
+| ---------------- | ----------------------------------------- | ------------------------------------------ |
+| **Purpose**      | Infrastructure setup                      | Business operations                        |
+| **Concerns**     | Authentication, URLs, HTTP                | Projects, Issues, Spaces, Pages            |
+| **Returns**      | `*atlassian.HTTPClient`                   | Domain models (`Project`, `Issue`)         |
+| **Dependencies** | `config` package only                     | Uses `atlassian.HTTPClient`                |
+| **Lifecycle**    | Created once per service at startup       | Methods called per-request                 |
+| **Testability**  | Mock HTTP transport or responses          | Mock HTTP client                           |
+| **Changes when** | Auth method changes, HTTP patterns change | New features, API endpoints added          |
+| **Knowledge**    | Infrastructure/plumbing                   | Business domain/API structure              |
+| **Location**     | `internal/atlassian/httpclient.go`        | `internal/jira/` or `internal/confluence/` |
 
 ### Why This Separation?
 
 #### 1. Single Responsibility Principle
 
-- `client.go`: "I know how to connect to Atlassian"
-- `service.go`: "I know what operations are possible"
+- HTTP Client: "I know how to connect to Atlassian"
+- Service: "I know what operations are possible"
 
 #### 2. Easier Testing
 
 ```go
-// Test client.go - Mock HTTP transport
+// Test HTTP client - Mock HTTP transport
 mockTransport := &MockHTTPTransport{
     RoundTripFunc: func(req *http.Request) (*http.Response, error) {
         // Return canned responses
+        return &http.Response{
+            StatusCode: 200,
+            Body:       io.NopCloser(strings.NewReader(`{"key":"DEMO"}`)),
+        }, nil
     },
 }
-client, _ := jira.NewClient(site, creds, jira.WithHTTPClient(&http.Client{
-    Transport: mockTransport,
-}))
+client := &atlassian.HTTPClient{
+    BaseURL:    "https://example.atlassian.net",
+    OAuthToken: "token",
+    HTTPClient: &http.Client{Transport: mockTransport},
+}
 
-// Test service.go - Mock entire client
-mockClient := &MockJiraClient{
-    NewRequestFunc: func(...) (*http.Request, error) {
-        // Return mock request
+// Test service - Mock HTTP client methods
+mockClient := &MockHTTPClient{
+    GetFunc: func(ctx context.Context, path string, result interface{}) error {
+        // Return mock data
+        return nil
     },
 }
 service := jira.NewService(mockClient)
@@ -293,63 +318,57 @@ service := jira.NewService(mockClient)
 #### 3. Flexibility and Maintainability
 
 - **Swap authentication** without touching service layer
-- **Add new operations** without changing client setup
-- **Replace SDK** entirely by only changing `client.go`
+- **Add new operations** without changing HTTP client
+- **Change HTTP implementation** entirely by only changing `internal/atlassian`
 - **Update API paths** without modifying authentication
 
 #### 4. Reusability
 
-- One client instance serves **all** service operations
+- One HTTP client instance serves **all** service operations
 - Service methods share the same authenticated connection
 - No redundant client creation
+- Both Jira and Confluence use the same HTTP client implementation
 
-### Implementation Differences: Jira vs Confluence
+### Consistent Implementation Across Services
 
-The two services use the go-atlassian SDK differently:
-
-#### Jira: Low-Level HTTP Requests
+Both Jira and Confluence services use the same HTTP client pattern:
 
 ```go
-// jira/service.go - Manual HTTP request construction
+// Both services use the shared atlassian.HTTPClient
+
+// Jira service
 func (s *Service) ListProjects(ctx context.Context, maxResults int) ([]Project, error) {
-    path := apiPath("project/search") + "?" + params.Encode()
-    req, err := s.client.NewRequest(ctx, http.MethodGet, path, "", nil)
+    path := apiPath("project") + "?" + params.Encode()
 
-    var res struct {
-        Values []Project `json:"values"`
-    }
-    if err := s.client.Do(req, &res); err != nil {
+    var projects []Project
+    if err := s.client.Get(ctx, path, &projects); err != nil {
         return nil, err
     }
 
-    return res.Values, nil
+    return projects, nil
 }
-```
 
-**Why**: Fine-grained control over requests, custom response parsing.
-
-#### Confluence: High-Level SDK Methods
-
-```go
-// confluence/service.go - Uses SDK's built-in methods
+// Confluence service
 func (s *Service) ListSpaces(ctx context.Context, limit int) ([]Space, error) {
-    options := &models.GetSpacesOptionScheme{
-        Expand: []string{"description.plain"},
-    }
+    path := apiPath("space") + "?" + params.Encode()
 
-    page, _, err := s.client.Space.Gets(ctx, options, 0, limit)
-    if err != nil {
+    var response struct {
+        Results []Space `json:"results"`
+    }
+    if err := s.client.Get(ctx, path, &response); err != nil {
         return nil, err
     }
 
-    // Transform SDK types to domain models
-    return transformSpaces(page.Results), nil
+    return response.Results, nil
 }
 ```
 
-**Why**: Confluence SDK has more complete high-level API, cleaner to use.
+**Benefits of unified approach**:
 
-**Both approaches are valid** - demonstrates flexibility of the pattern.
+- Consistent patterns across all services
+- Easier to maintain and understand
+- Shared HTTP client code reduces duplication
+- Direct control over API requests and responses
 
 ## Data Flow
 
@@ -367,10 +386,10 @@ func (s *Service) ListSpaces(ctx context.Context, limit int) ([]Space, error) {
 └─────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 3. Create Clients (jira.NewClient, confluence.NewClient)│
+│ 3. Create HTTP Clients (atlassian.NewHTTPClient)       │
 │    - Normalize URLs                                     │
 │    - Set up authentication                              │
-│    - Configure HTTP client                              │
+│    - Configure HTTP client with timeouts                │
 └─────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -426,21 +445,21 @@ func (s *Service) ListSpaces(ctx context.Context, limit int) ([]Space, error) {
 └─────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 5. Client Layer (internal/jira/client.go)               │
-│    - client.NewRequest() creates authenticated request  │
-│    - client.Do() executes HTTP call                     │
+│ 5. HTTP Client (internal/atlassian/httpclient.go)      │
+│    - client.Get() creates authenticated GET request     │
+│    - Executes HTTP call and decodes response            │
 └─────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
 │ 6. External API (Jira REST API)                         │
-│    GET /rest/api/2/project/search?maxResults=10         │
-│    Returns: {"values": [...]}                           │
+│    GET /rest/api/2/project?maxResults=10                │
+│    Returns: [{id, key, name}, ...]                      │
 └─────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
 │ 7. Service Layer (Response Handling)                    │
-│    - Parse JSON response                                │
-│    - Transform to []Project domain model                │
+│    - HTTP client automatically decodes JSON             │
+│    - Service receives []Project domain model            │
 │    - Return to MCP layer                                │
 └─────────────────────────────────────────────────────────┘
                     ↓
@@ -651,19 +670,13 @@ func (s *Service) GetComments(ctx context.Context, issueKey string) ([]Comment, 
     }
 
     // Build API path
-    path := apiPath("issue", issueKey, "comment")
+    path := apiPath("issue", url.PathEscape(issueKey), "comment")
 
-    // Make request
-    req, err := s.client.NewRequest(ctx, http.MethodGet, path, "", nil)
-    if err != nil {
-        return nil, err
-    }
-
-    // Parse response
+    // Make request using HTTP client
     var res struct {
         Comments []Comment `json:"comments"`
     }
-    if err := s.client.Do(req, &res); err != nil {
+    if err := s.client.Get(ctx, path, &res); err != nil {
         return nil, fmt.Errorf("jira: get comments: %w", err)
     }
 
@@ -753,7 +766,7 @@ func TestService_GetComments(t *testing.T) {
 | `jira.get_comments` | Get all comments for a Jira issue. |
 ```
 
-**Notice**: No changes needed to `client.go` - infrastructure layer is unaffected!
+**Notice**: No changes needed to `internal/atlassian/httpclient.go` - infrastructure layer is unaffected!
 
 ## Summary
 
@@ -767,21 +780,25 @@ func TestService_GetComments(t *testing.T) {
 
 ### Key Takeaways
 
-- **`client.go`** = Infrastructure (how to connect)
-- **`service.go`** = Business logic (what to do)
-- **`mcp/*.go`** = MCP integration (how to expose)
-- **`state/cache.go`** = Session state (what to remember)
+- **`internal/atlassian/httpclient.go`** = Infrastructure (how to connect)
+- **`internal/jira/client.go` & `internal/confluence/client.go`** = Client factory (create HTTP clients)
+- **`internal/jira/service.go` & `internal/confluence/service.go`** = Business logic (what to do)
+- **`internal/mcp/*.go`** = MCP integration (how to expose)
+- **`internal/state/cache.go`** = Session state (what to remember)
 
 ### Benefits of This Architecture
 
 ✅ **Maintainable**: Clear separation makes code easy to understand and modify
 ✅ **Testable**: Each layer can be mocked and tested independently
 ✅ **Scalable**: Adding features doesn't require touching infrastructure
-✅ **Flexible**: Swap authentication, clients, or SDKs without major rewrites
+✅ **Flexible**: Swap authentication or HTTP implementation without major rewrites
 ✅ **Safe**: Thread-safe cache and defensive copying prevent bugs
+✅ **Unified**: Both Jira and Confluence use the same HTTP client infrastructure
 
 ## Further Reading
 
 - [CLAUDE.md](./CLAUDE.md) - Project overview and development guide
+- [README.md](./README.md) - Quick start and configuration guide
 - [internal/state/README.md](./internal/state/README.md) - State cache documentation
-- [go-atlassian Documentation](https://deepwiki.com/ctreminiom/go-atlassian) - SDK reference
+- [Jira REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v2/) - Official Jira API documentation
+- [Confluence REST API](https://developer.atlassian.com/cloud/confluence/rest/v1/) - Official Confluence API documentation

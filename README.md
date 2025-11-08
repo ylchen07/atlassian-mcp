@@ -4,7 +4,7 @@ A Go implementation of the [Model Context Protocol (MCP)](https://modelcontextpr
 
 ## Features
 
-- **Jira Tools**: Projects, issues, search (JQL) - *more tools coming soon*
+- **Jira Tools**: Projects, issues, search (JQL) - _more tools coming soon_
 - **Confluence Tools**: Spaces, pages, search (CQL), content management
 - **Flexible Configuration**: YAML files, environment variables, or hybrid approach
 - **Smart Caching**: Session-based project caching to minimize API calls
@@ -75,18 +75,16 @@ The server communicates over stdio and can be connected to any MCP-compatible cl
 
 ### Jira
 
-| Tool                    | Status | Description                        |
-| ----------------------- | ------ | ---------------------------------- |
-| `jira.list_projects`    | ✅      | List accessible projects (cached)  |
-| `jira.search_issues`    | ✅      | Execute JQL queries                |
-| `jira.create_issue`     | 🚧      | Create new issues                  |
-| `jira.update_issue`     | 🚧      | Update issue fields                |
-| `jira.add_comment`      | 🚧      | Add comments to issues             |
-| `jira.list_transitions` | 🚧      | Get available workflow transitions |
-| `jira.transition_issue` | 🚧      | Move issues through workflow       |
-| `jira.add_attachment`   | 🚧      | Upload file attachments            |
-
-✅ = Available now | 🚧 = Coming soon
+| Tool                    | Description                        |
+| ----------------------- | ---------------------------------- |
+| `jira.list_projects`    | List accessible projects (cached)  |
+| `jira.search_issues`    | Execute JQL queries                |
+| `jira.create_issue`     | Create new issues                  |
+| `jira.update_issue`     | Update issue fields                |
+| `jira.add_comment`      | Add comments to issues             |
+| `jira.list_transitions` | Get available workflow transitions |
+| `jira.transition_issue` | Move issues through workflow       |
+| `jira.add_attachment`   | Upload file attachments            |
 
 ### Confluence
 
@@ -236,6 +234,7 @@ Integration tests use the same environment variables as the server and skip when
 ```
 cmd/server          → CLI entry point
 internal/
+  atlassian/       → Shared HTTP client for Atlassian APIs
   config/          → Viper-based configuration
   jira/            → Jira client & service layer
   confluence/      → Confluence client & service layer
@@ -267,7 +266,8 @@ GitHub Actions runs linting and testing on every push and pull request. See [`.g
 
 - [MCP Documentation](https://modelcontextprotocol.io)
 - [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go) - Go MCP framework
-- [go-atlassian SDK](https://deepwiki.com/ctreminiom/go-atlassian) - Atlassian API client
+- [Jira REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v2/) - Jira API documentation
+- [Confluence REST API](https://developer.atlassian.com/cloud/confluence/rest/v1/) - Confluence API documentation
 
 ## License
 
