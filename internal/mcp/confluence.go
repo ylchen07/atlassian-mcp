@@ -111,7 +111,7 @@ func (c *ConfluenceTools) handleListSpaces(ctx context.Context, _ mcp.CallToolRe
 	for _, space := range spaces {
 		description := strings.TrimSpace(space.Description.Plain.Value)
 		result.Spaces = append(result.Spaces, ConfluenceSpace{
-			ID:          space.ID,
+			ID:          space.ID.String(),
 			Key:         space.Key,
 			Name:        space.Name,
 			Description: description,

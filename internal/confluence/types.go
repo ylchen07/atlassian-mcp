@@ -1,10 +1,15 @@
 package confluence
 
+import (
+	"encoding/json"
+)
+
 // Space represents a Confluence space summary.
+// Note: Space IDs are numeric in Confluence Data Center/Server.
 type Space struct {
-	ID          string `json:"id"`
-	Key         string `json:"key"`
-	Name        string `json:"name"`
+	ID          json.Number `json:"id"`
+	Key         string      `json:"key"`
+	Name        string      `json:"name"`
 	Description struct {
 		Plain struct {
 			Value string `json:"value"`
