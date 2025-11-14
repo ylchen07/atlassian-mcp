@@ -61,7 +61,7 @@ The Atlassian MCP Server follows a **layered architecture** pattern that separat
 
 - `server.go` - MCP server construction and dependency injection
 - `jira.go` - Jira tool registration (8 tools)
-- `confluence.go` - Confluence tool registration (4 tools)
+- `confluence.go` - Confluence tool registration (5 tools)
 
 **Example**:
 

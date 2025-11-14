@@ -325,6 +325,89 @@ func TestUpdatePageValidation(t *testing.T) {
 	}
 }
 
+func TestGetPage(t *testing.T) {
+	t.Parallel()
+
+	client := newMockClient(t, func(req *http.Request) (*http.Response, error) {
+		if req.Method != "GET" {
+			t.Fatalf("expected GET, got %s", req.Method)
+		}
+
+		if !strings.Contains(req.URL.Path, "/rest/api/content/12345") {
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+		}
+
+		page := Content{
+			ID:     "12345",
+			Type:   "page",
+			Status: "current",
+			Title:  "Test Page",
+			Version: struct {
+				Number int `json:"number"`
+			}{Number: 3},
+			Body: struct {
+				Storage struct {
+					Value          string `json:"value"`
+					Representation string `json:"representation"`
+				} `json:"storage"`
+			}{
+				Storage: struct {
+					Value          string `json:"value"`
+					Representation string `json:"representation"`
+				}{
+					Value:          "<p>Test content</p>",
+					Representation: "storage",
+				},
+			},
+		}
+
+		data, _ := json.Marshal(page)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(bytes.NewReader(data)),
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	service := NewService(client)
+	page, err := service.GetPage(context.Background(), "12345", []string{"body.storage", "version"})
+	if err != nil {
+		t.Fatalf("GetPage error: %v", err)
+	}
+
+	if page.ID != "12345" {
+		t.Fatalf("expected ID '12345', got %s", page.ID)
+	}
+
+	if page.Title != "Test Page" {
+		t.Fatalf("expected title 'Test Page', got %s", page.Title)
+	}
+
+	if page.Version.Number != 3 {
+		t.Fatalf("expected version 3, got %d", page.Version.Number)
+	}
+
+	if page.Body.Storage.Value != "<p>Test content</p>" {
+		t.Fatalf("expected body '<p>Test content</p>', got %s", page.Body.Storage.Value)
+	}
+}
+
+func TestGetPageValidation(t *testing.T) {
+	t.Parallel()
+
+	client := &atlassian.HTTPClient{BaseURL: "https://example.com"}
+	service := NewService(client)
+
+	_, err := service.GetPage(context.Background(), "", []string{})
+	if err == nil {
+		t.Fatal("expected error for empty page ID")
+	}
+
+	if !strings.Contains(err.Error(), "page id required") {
+		t.Fatalf("expected 'page id required' error, got: %v", err)
+	}
+}
+
 func TestAPIPath(t *testing.T) {
 	t.Parallel()
 

@@ -39,6 +39,7 @@ func TestNewServerRegistersExpectedTools(t *testing.T) {
 		"confluence.search_pages",
 		"confluence.create_page",
 		"confluence.update_page",
+		"confluence.get_page",
 	}
 
 	if len(tools) != len(expected) {
@@ -133,8 +134,8 @@ func TestNewConfluenceToolsTrimsBaseURL(t *testing.T) {
 		t.Fatalf("expected trimmed base URL, got %s", ct.baseURL)
 	}
 
-	if len(srv.ListTools()) != 4 {
-		t.Fatalf("expected 4 confluence tools, got %d", len(srv.ListTools()))
+	if len(srv.ListTools()) != 5 {
+		t.Fatalf("expected 5 confluence tools, got %d", len(srv.ListTools()))
 	}
 }
 

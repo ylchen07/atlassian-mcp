@@ -64,6 +64,16 @@ func NewConfluenceTools(s *server.MCPServer, service *confluence.Service, baseUR
 		mcp.NewTypedToolHandler(ct.handleUpdatePage),
 	)
 
+	s.AddTool(
+		mcp.NewTool(
+			"confluence.get_page",
+			mcp.WithDescription("Retrieve a Confluence page by ID with full content"),
+			mcp.WithInputSchema[ConfluenceGetPageArgs](),
+			mcp.WithOutputSchema[ConfluencePageDetailResult](),
+		),
+		mcp.NewTypedToolHandler(ct.handleGetPage),
+	)
+
 	return ct
 }
 
@@ -191,6 +201,23 @@ type ConfluencePageResult struct {
 	URL     string `json:"url"`
 }
 
+// ConfluenceGetPageArgs parameters for retrieving a page.
+type ConfluenceGetPageArgs struct {
+	ID     string   `json:"id" jsonschema:"required" jsonschema_description:"Page ID"`
+	Expand []string `json:"expand,omitempty" jsonschema_description:"Additional content expansions (e.g., body.storage, version, space)"`
+}
+
+// ConfluencePageDetailResult response for get page with full content.
+type ConfluencePageDetailResult struct {
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Status  string `json:"status"`
+	Title   string `json:"title"`
+	Body    string `json:"body"`
+	Version int    `json:"version"`
+	URL     string `json:"url"`
+}
+
 func (c *ConfluenceTools) handleCreatePage(ctx context.Context, _ mcp.CallToolRequest, args ConfluencePageArgs) (*mcp.CallToolResult, error) {
 	created, err := c.service.CreatePage(ctx, confluence.PageInput{
 		SpaceKey: args.SpaceKey,
@@ -233,5 +260,31 @@ func (c *ConfluenceTools) handleUpdatePage(ctx context.Context, _ mcp.CallToolRe
 	}
 
 	fallback := fmt.Sprintf("Updated Confluence page %s", updated.Title)
+	return mcp.NewToolResultStructured(result, fallback), nil
+}
+
+func (c *ConfluenceTools) handleGetPage(ctx context.Context, _ mcp.CallToolRequest, args ConfluenceGetPageArgs) (*mcp.CallToolResult, error) {
+	// Always expand body.storage to get the content
+	expand := args.Expand
+	if len(expand) == 0 {
+		expand = []string{"body.storage", "version", "space"}
+	}
+
+	page, err := c.service.GetPage(ctx, args.ID, expand)
+	if err != nil {
+		return mcp.NewToolResultErrorFromErr("confluence get page failed", err), nil
+	}
+
+	result := ConfluencePageDetailResult{
+		ID:      page.ID,
+		Type:    page.Type,
+		Status:  page.Status,
+		Title:   page.Title,
+		Body:    page.Body.Storage.Value,
+		Version: page.Version.Number,
+		URL:     fmt.Sprintf("%s/pages/%s", c.baseURL, page.ID),
+	}
+
+	fallback := fmt.Sprintf("Retrieved Confluence page %s (version %d)", page.Title, page.Version.Number)
 	return mcp.NewToolResultStructured(result, fallback), nil
 }

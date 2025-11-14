@@ -3,6 +3,7 @@ package confluence
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // CreatePage creates a Confluence page.
@@ -92,4 +93,24 @@ func (s *Service) UpdatePage(ctx context.Context, id string, in PageInput) (*Con
 	}
 
 	return &updated, nil
+}
+
+// GetPage retrieves a Confluence page by ID with full content.
+func (s *Service) GetPage(ctx context.Context, id string, expand []string) (*Content, error) {
+	if id == "" {
+		return nil, fmt.Errorf("confluence: page id required")
+	}
+
+	// Build query parameters for expand
+	path := apiPath("content", id)
+	if len(expand) > 0 {
+		path += "?expand=" + strings.Join(expand, ",")
+	}
+
+	var page Content
+	if err := s.client.Get(ctx, path, &page); err != nil {
+		return nil, err
+	}
+
+	return &page, nil
 }

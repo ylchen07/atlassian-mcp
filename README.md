@@ -88,12 +88,13 @@ The server communicates over stdio and can be connected to any MCP-compatible cl
 
 ### Confluence
 
-| Tool                      | Description            |
-| ------------------------- | ---------------------- |
-| `confluence.list_spaces`  | List accessible spaces |
-| `confluence.search_pages` | Execute CQL queries    |
-| `confluence.create_page`  | Create new pages       |
-| `confluence.update_page`  | Update existing pages  |
+| Tool                      | Description                     |
+| ------------------------- | ------------------------------- |
+| `confluence.list_spaces`  | List accessible spaces          |
+| `confluence.search_pages` | Execute CQL queries             |
+| `confluence.create_page`  | Create new pages                |
+| `confluence.update_page`  | Update existing pages           |
+| `confluence.get_page`     | Retrieve page with full content |
 
 ## Configuration
 
